@@ -1,0 +1,55 @@
+# build artifacts
+build/
+Build/
+*.o
+*.obj
+*.a
+*.so
+*.so.*
+*.dylib
+*.dll
+*.exe
+
+# cmake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+CTestTestfile.cmake
+Makefile
+compile_commands.json
+CMakeUserPresets.json
+
+# qt / qml
+*.qmltypes
+qmldir
+moc_*.cpp
+moc_*.h
+ui_*.h
+qrc_*.cpp
+*.moc
+.qmlls/
+.qml_from_disk_cache
+
+# python (Warsa's venv)
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+
+# editor / os cruft
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store
+
+# misc
+*.log
+*.tmp
+.qmlls.ini
+thukuna.jpeg
+wavy.qml
+icon.svg
+button.qml
+iconbutton.qml

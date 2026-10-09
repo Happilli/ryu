@@ -1,0 +1,40 @@
+site_name: Ryu
+site_url: https://ryu.safalski.ryzn.pro/
+repo_url: https://github.com/Happilli/ryu
+
+theme:
+  name: material
+  palette:
+    - scheme: ryu-dark
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+    - scheme: ryu-light
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+  font:
+    text: Roboto
+    code: Roboto Mono
+  features:
+    - navigation.sections
+    - navigation.tabs
+    - content.code.copy
+
+extra_css:
+  - stylesheets/extra.css
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - tables
+  - attr_list
+
+nav:
+  - Home: index.md
+  - Extraa:
+      - WavyProgress: extraa/wavy-progress.md
+      - MaterialSlider: extraa/material-slider.md

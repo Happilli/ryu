@@ -1,0 +1,36 @@
+#!/usr/bin/env python3
+import sys
+import time
+import requests
+from bs4 import BeautifulSoup
+
+MONTHS = ["Baishakh", "Jestha", "Ashadh", "Shrawan", "Bhadra", "Ashwin",
+          "Kartik", "Mangsir", "Poush", "Magh", "Falgun", "Chaitra"]
+
+HEADERS = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36"}
+
+
+def get_month_days(year):
+    days = []
+    for i, month in enumerate(MONTHS, 1):
+        url = f"https://www.ashesh.com.np/nepali-calendar/?year={year}&month={month}"
+        try:
+            r = requests.get(url, headers=HEADERS, timeout=15)
+            divs = BeautifulSoup(r.content, "html.parser").find_all("div", class_="date_np")
+            nums = [int(d.get_text().strip()) for d in divs if d.get_text().strip().isdigit()]
+            day = max((n for n in nums if 1 <= n <= 32), default=30)
+        except Exception:
+            day = 30
+
+        days.append(day)
+        print(f"[{i:2d}/12] {month:10s} {day}", file=sys.stderr)
+        time.sleep(0.5)
+
+    return days
+
+
+if __name__ == "__main__":
+    year = int(sys.argv[1]) if len(sys.argv) > 1 else 2082
+    days = get_month_days(year)
+    print(f"total: {sum(days)}", file=sys.stderr)
+    print(f"{{{', '.join(map(str, days))}}}")
