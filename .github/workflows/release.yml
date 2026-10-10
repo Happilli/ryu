@@ -21,7 +21,7 @@ jobs:
           VER="${GITHUB_REF_NAME#v}"
           tar czf "ryu-$VER-x86_64.tar.gz" -C staging usr
           sha256sum "ryu-$VER-x86_64.tar.gz" > "ryu-$VER-x86_64.tar.gz.sha256"
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v3
         with:
           files: |
             ryu-*-x86_64.tar.gz
