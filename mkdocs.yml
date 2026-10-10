@@ -1,6 +1,8 @@
 site_name: Ryu
+site_description: Material 3 components for Qt 6 and QML
 site_url: https://ryu.safalski.ryzn.pro/
 repo_url: https://github.com/Happilli/ryu
+repo_name: Happilli/ryu
 
 theme:
   name: material
@@ -14,12 +16,25 @@ theme:
         icon: material/weather-night
         name: Switch to dark mode
   font:
-    text: Roboto
-    code: Roboto Mono
+    text: Inter
+    code: JetBrains Mono
+  favicon: dragon.svg
+  icon:
+    repo: fontawesome/brands/github
+    logo: fontawesome/solid/dragon
   features:
-    - navigation.sections
+    - navigation.instant
+    - navigation.instant.progress
     - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.top
+    - navigation.footer
+    - toc.follow
+    - search.suggest
+    - search.highlight
     - content.code.copy
+    - content.tabs.link
 
 extra_css:
   - stylesheets/extra.css
@@ -32,9 +47,13 @@ markdown_extensions:
       alternate_style: true
   - tables
   - attr_list
+  - toc:
+      permalink: true
 
 nav:
   - Home: index.md
   - Extraa:
       - WavyProgress: extraa/wavy-progress.md
       - MaterialSlider: extraa/material-slider.md
+extra:
+  generator: false
