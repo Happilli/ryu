@@ -11,7 +11,7 @@ It is a personal project. It works on my machine. Your machine is a side quest.
 | Module | What it does | Docs |
 |---|---|---|
 | **Extraa** | Material 3 widgets: `WavyProgress`, `MaterialSlider`, `MaterialIconButton`, `MaterialButtonGroup` | Partly |
-| **Shapes** | `MaterialShape`, with 35 shapes that morph into each other using springs | Soon™ |
+| **Shapes** | `MaterialShape`, with 35 shapes that morph into each other using springs | Yes |
 | **Cleave** | Audio visualizer. PipeWire in, FFT out, bars go brrr | Soon™ |
 | **Clipsh** | Clipboard history on top of `cliphist` and `wl-copy` | Soon™ |
 | **Drawness** | A scene-graph drawing item with undo/redo | Soon™ |
@@ -24,8 +24,53 @@ It is a personal project. It works on my machine. Your machine is a side quest.
 
 - [**WavyProgress**](extraa/wavy-progress.md): a bar or ring with an optional wave. Set `amplitude: 0` and it becomes a calm, flat ring with no wave.
 - [**MaterialSlider**](extraa/material-slider.md): a floating-handle slider, horizontal or vertical, with a value bubble that appears when you grab it.
+- [**MaterialShape**](shapes/material-shape.md): 35 shapes that morph into each other on a spring, with image, glyph and loading modes.
 
-## Quick start
+## Installation
+
+### Arch Linux (AUR)
+
+Ryu is on the AUR in two flavors. Pick one, because they conflict with each other.
+
+=== "ryu-bin (prebuilt)"
+
+    Installs the release binaries. Fast, no compiler needed.
+
+    ```bash
+    paru -S ryu-bin
+    ```
+
+=== "ryu (from source)"
+
+    Builds from the tagged release with CMake and Ninja. Slower, but compiled against your own Qt.
+
+    ```bash
+    paru -S ryu
+    ```
+
+Any AUR helper works (`yay -S ryu-bin`). To install by hand:
+
+```bash
+git clone https://aur.archlinux.org/ryu-bin.git
+cd ryu-bin
+makepkg -si
+```
+
+Dependencies (`qt6-base`, `qt6-declarative`, `cliphist`, `wl-clipboard`, `pipewire`) are pulled in automatically. The modules are installed to `/usr/lib/qt6/qml/Ryu/`, so they work with any Qt 6 QML app or Quickshell config, no extra import paths needed:
+
+```qml
+import Ryu.Extraa
+import Ryu.Shapes
+```
+
+!!! note "Module not installed?"
+    If you see `module "Ryu.Extraa" is not installed`, the package isn't installed yet. `makepkg` only builds it, so run `makepkg -si` (or `sudo pacman -U` on the built package) and try again.
+
+### Other distros
+
+No packages yet. [Build from source](#build-from-source) and install with `ninja -C build install`.
+
+## Build from source
 
 ```bash
 git clone https://github.com/Happilli/ryu
@@ -65,6 +110,8 @@ And, depending on what you use:
 - **PipeWire** for Cleave
 - **cliphist** and **wl-clipboard** for Clipsh (Wayland only)
 - **Python** with `requests` and `beautifulsoup4` for the Warsa month-length scraper
+
+On Arch, the AUR packages handle all of this for you.
 
 ## A note on colors
 
