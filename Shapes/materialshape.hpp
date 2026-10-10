@@ -33,6 +33,16 @@ class MaterialShape : public QQuickPaintedItem {
                  loadingGapChanged)
   Q_PROPERTY(qreal loadingKick READ loadingKick WRITE setLoadingKick NOTIFY
                  loadingKickChanged)
+  Q_PROPERTY(bool loadingAllShapes READ loadingAllShapes WRITE
+                 setLoadingAllShapes NOTIFY loadingAllShapesChanged)
+  Q_PROPERTY(QList<int> loadingSequence READ loadingSequence WRITE
+                 setLoadingSequence NOTIFY loadingSequenceChanged)
+  Q_PROPERTY(
+      bool contained READ contained WRITE setContained NOTIFY containedChanged)
+  Q_PROPERTY(QColor containerColor READ containerColor WRITE setContainerColor
+                 NOTIFY containerColorChanged)
+  Q_PROPERTY(qreal containedScale READ containedScale WRITE setContainedScale
+                 NOTIFY containedScaleChanged)
   Q_PROPERTY(QUrl source READ source WRITE setSource NOTIFY sourceChanged)
   Q_PROPERTY(
       FillMode fillMode READ fillMode WRITE setFillMode NOTIFY fillModeChanged)
@@ -99,6 +109,11 @@ public:
   bool loading() const { return m_loading; }
   int loadingGap() const { return m_loadGap; }
   qreal loadingKick() const { return m_loadKick; }
+  bool loadingAllShapes() const { return m_loadAll; }
+  QList<int> loadingSequence() const { return m_loadSeq; }
+  bool contained() const { return m_contained; }
+  QColor containerColor() const { return m_containerColor; }
+  qreal containedScale() const { return m_containedScale; }
   QUrl source() const { return m_source; }
   FillMode fillMode() const { return m_fillMode; }
   QString glyph() const { return m_glyph; }
@@ -114,6 +129,11 @@ public:
   void setLoading(bool v);
   void setLoadingGap(int ms);
   void setLoadingKick(qreal deg);
+  void setLoadingAllShapes(bool v);
+  void setLoadingSequence(const QList<int> &seq);
+  void setContained(bool v);
+  void setContainerColor(const QColor &v);
+  void setContainedScale(qreal v);
   void setSource(const QUrl &u);
   void setFillMode(FillMode m);
   void setGlyph(const QString &v);
@@ -133,6 +153,11 @@ signals:
   void loadingChanged();
   void loadingGapChanged();
   void loadingKickChanged();
+  void loadingAllShapesChanged();
+  void loadingSequenceChanged();
+  void containedChanged();
+  void containerColorChanged();
+  void containedScaleChanged();
   void sourceChanged();
   void fillModeChanged();
   void glyphChanged();
@@ -162,6 +187,8 @@ private:
   void startLoading();
   void advanceLoading();
   void scheduleNext();
+  int loadCount() const;
+  Type loadShapeAt(int i) const;
 
   Type m_shape = Circle;
   QColor m_color = QColor("#6750A4");
@@ -172,6 +199,11 @@ private:
   bool m_morphing = false;
 
   bool m_loading = false;
+  bool m_loadAll = false;
+  QList<int> m_loadSeq;
+  bool m_contained = false;
+  QColor m_containerColor = QColor("#D0BCFF");
+  qreal m_containedScale = 0.62;
   int m_loadGap = 120;
   qreal m_loadKick = 90.0;
   int m_loadIndex = 0;

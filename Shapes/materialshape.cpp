@@ -24,7 +24,7 @@ constexpr qreal kImageBleed = 1.15;
 constexpr qreal kLoadBleed = 1.45;
 constexpr qreal kMaxStep = 0.004;
 
-constexpr std::array<MaterialShape::Type, 7> kLoadingSequence = {
+constexpr std::array<MaterialShape::Type, 7> kDefaultLoading = {
     MaterialShape::SoftBurst, MaterialShape::Cookie9Sided,
     MaterialShape::Pentagon,  MaterialShape::Pill,
     MaterialShape::Sunny,     MaterialShape::Cookie4Sided,
@@ -234,6 +234,20 @@ void MaterialShape::setMorphing(bool v) {
   emit morphingChanged();
 }
 
+int MaterialShape::loadCount() const {
+  if (m_loadAll)
+    return Morph::kShapeCount;
+  return m_loadSeq.isEmpty() ? int(kDefaultLoading.size()) : m_loadSeq.size();
+}
+
+MaterialShape::Type MaterialShape::loadShapeAt(int i) const {
+  if (m_loadAll)
+    return Type(i);
+  if (m_loadSeq.isEmpty())
+    return kDefaultLoading[i];
+  return Type(m_loadSeq[i]);
+}
+
 void MaterialShape::setLoading(bool v) {
   if (m_loading == v)
     return;
@@ -264,23 +278,76 @@ void MaterialShape::setLoadingKick(qreal deg) {
   emit loadingKickChanged();
 }
 
+void MaterialShape::setContained(bool v) {
+  if (m_contained == v)
+    return;
+  m_contained = v;
+  m_pathDirty = true;
+  m_imageDirty = true;
+  emit containedChanged();
+  update();
+}
+
+void MaterialShape::setContainerColor(const QColor &v) {
+  if (m_containerColor == v)
+    return;
+  m_containerColor = v;
+  emit containerColorChanged();
+  update();
+}
+
+void MaterialShape::setContainedScale(qreal v) {
+  v = std::clamp(v, 0.1, 1.0);
+  if (qFuzzyCompare(m_containedScale, v))
+    return;
+  m_containedScale = v;
+  m_pathDirty = true;
+  m_imageDirty = true;
+  emit containedScaleChanged();
+  update();
+}
+void MaterialShape::setLoadingAllShapes(bool v) {
+  if (m_loadAll == v)
+    return;
+  m_loadAll = v;
+  emit loadingAllShapesChanged();
+}
+
+void MaterialShape::setLoadingSequence(const QList<int> &seq) {
+  QList<int> clean;
+  clean.reserve(seq.size());
+  for (int s : seq)
+    if (s >= 0 && s < Morph::kShapeCount)
+      clean.append(s);
+  if (m_loadSeq == clean)
+    return;
+  m_loadSeq = clean;
+  emit loadingSequenceChanged();
+}
+
 void MaterialShape::startLoading() {
   m_rot = rotation();
   m_rotTarget = m_rot;
   m_rotVel = 0.0;
-  m_loadIndex = int(kLoadingSequence.size()) - 1;
+  m_loadIndex = loadCount() - 1;
   advanceLoading();
 }
 
 void MaterialShape::advanceLoading() {
   if (!m_loading)
     return;
-  m_loadIndex = (m_loadIndex + 1) % int(kLoadingSequence.size());
+
+  m_loadIndex = (m_loadIndex + 1) % loadCount();
   m_rotTarget += m_loadKick;
   ensureDriver();
-  setShape(kLoadingSequence[m_loadIndex]);
-  if (!m_morphing)
-    scheduleNext();
+
+  const Type next = loadShapeAt(m_loadIndex);
+  if (next == m_shape) {
+    if (!m_morphing)
+      scheduleNext();
+    return;
+  }
+  setShape(next);
 }
 
 void MaterialShape::scheduleNext() {
@@ -357,7 +424,8 @@ void MaterialShape::buildImage() {
   const qreal dpr = window() ? window()->devicePixelRatio() : 1.0;
   const qreal bleed = m_loading ? kLoadBleed : kImageBleed;
   const qreal bw = m_border->width();
-  const qreal side = std::min(width() - bw, height() - bw) * kFill * bleed;
+  const qreal side = std::min(width() - bw, height() - bw) * kFill * bleed *
+                     (m_contained ? m_containedScale : 1.0);
   const int px = qRound(side * dpr);
   if (px <= 0)
     return;
@@ -461,7 +529,8 @@ void MaterialShape::rebuildPath() {
   if (dst.isEmpty())
     return;
 
-  const qreal s = std::min(dst.width(), dst.height()) * kFill;
+  const qreal s = std::min(dst.width(), dst.height()) * kFill *
+                  (m_contained ? m_containedScale : 1.0);
   const QPointF c = dst.center();
   auto map = [&](const QPointF &p) {
     return QPointF(c.x() + p.x() * s, c.y() + p.y() * s);
@@ -474,6 +543,7 @@ void MaterialShape::rebuildPath() {
     m_path.cubicTo(map(cb[1]), map(cb[2]), map(cb[3]));
   m_path.closeSubpath();
 }
+
 void MaterialShape::paint(QPainter *p) {
   if (m_pathDirty)
     rebuildPath();
@@ -482,6 +552,13 @@ void MaterialShape::paint(QPainter *p) {
 
   p->setRenderHint(QPainter::Antialiasing, true);
   p->setPen(Qt::NoPen);
+  if (m_contained && m_containerColor.alpha() > 0) {
+    const qreal d = std::min(width(), height()) - m_border->width();
+    if (d > 0.0) {
+      p->setBrush(m_containerColor);
+      p->drawEllipse(QPointF(width() / 2.0, height() / 2.0), d / 2.0, d / 2.0);
+    }
+  }
   p->setBrush(m_color);
   p->drawPath(m_path);
 
@@ -529,6 +606,11 @@ void MaterialShape::paint(QPainter *p) {
   if (bw > 0.0 && bc.alpha() > 0) {
     p->setBrush(Qt::NoBrush);
     p->setPen(QPen(bc, bw, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
-    p->drawPath(m_path);
+    if (m_contained) {
+      const qreal d = std::min(width(), height()) - bw;
+      p->drawEllipse(QPointF(width() / 2.0, height() / 2.0), d / 2.0, d / 2.0);
+    } else {
+      p->drawPath(m_path);
+    }
   }
 }

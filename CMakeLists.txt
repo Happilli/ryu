@@ -124,6 +124,10 @@ ryu_module(Extraa
         Extraa/materialbuttongroup.hpp
         Extraa/materialiconbutton.cpp
         Extraa/materialiconbutton.hpp
+        Extraa/materialsplitbutton.cpp
+        Extraa/materialsplitbutton.hpp
+        Extraa/materialswitch.cpp
+        Extraa/materialswitch.hpp
     LIBS
         Qt6::Quick
 )

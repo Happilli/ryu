@@ -55,5 +55,7 @@ nav:
   - Extraa:
       - WavyProgress: extraa/wavy-progress.md
       - MaterialSlider: extraa/material-slider.md
+  - Shapes:
+      - MaterialShape: shapes/material-shape.md
 extra:
   generator: false
