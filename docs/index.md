@@ -20,12 +20,6 @@ It is a personal project. It works on my machine. Your machine is a side quest.
 
 "Soon™" means the code exists and the documentation is still in its training arc.
 
-## Documented so far
-
-- [**WavyProgress**](extraa/wavy-progress.md): a bar or ring with an optional wave. Set `amplitude: 0` and it becomes a calm, flat ring with no wave.
-- [**MaterialSlider**](extraa/material-slider.md): a floating-handle slider, horizontal or vertical, with a value bubble that appears when you grab it.
-- [**MaterialShape**](shapes/material-shape.md): 35 shapes that morph into each other on a spring, with image, glyph and loading modes.
-
 ## Installation
 
 ### Arch Linux (AUR)

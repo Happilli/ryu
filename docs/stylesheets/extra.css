@@ -129,6 +129,10 @@
   --ryu-accent-soft: #0000000f;
 }
 
+.md-grid {
+  max-width: none;
+}
+
 .md-header,
 .md-tabs {
   box-shadow: none;
@@ -259,6 +263,10 @@
     border-radius: 0;
     border: 0;
     margin-top: 0;
+  }
+
+  .md-typeset__table table:not([class]) {
+    min-width: 34rem;
   }
 }
 
@@ -397,18 +405,32 @@
   background: var(--ryu-accent-soft);
 }
 
+.md-typeset__scrollwrap {
+  margin: 1em 0;
+  overflow: visible;
+}
+
 .md-typeset__table {
   display: block;
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--ryu-border);
+  border-radius: var(--ryu-radius);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .md-typeset table:not([class]) {
+  display: table;
+  width: 100%;
   font-size: 0.74rem;
   color: var(--md-default-fg-color);
-  border: 1px solid var(--ryu-border);
-  border-radius: var(--ryu-radius);
+  border: 0;
+  border-radius: 0;
   border-collapse: separate;
   border-spacing: 0;
-  overflow: hidden;
   box-shadow: none;
   background: transparent;
 }
@@ -429,8 +451,28 @@
   border-top: 0;
 }
 
+.md-typeset table:not([class]) tbody tr {
+  background: transparent;
+  transition: background-color 0.15s;
+}
+
 .md-typeset table:not([class]) tbody tr:hover {
-  background: var(--ryu-accent-soft);
+  background-color: var(--ryu-accent-soft);
+  box-shadow: none;
+}
+
+.md-typeset table:not([class]) tbody tr:hover td {
+  color: var(--md-default-fg-color);
+}
+
+.md-typeset table:not([class]) th code,
+.md-typeset table:not([class]) td code {
+  background-color: var(--ryu-surface-2);
+  border-color: var(--ryu-border);
+}
+
+.md-typeset table:not([class]) td a {
+  color: var(--md-default-fg-color);
 }
 
 .md-typeset .admonition,
@@ -498,7 +540,7 @@
   box-shadow: none;
 }
 
-.md-footer{
+.md-footer {
   background-color: var(--md-default-bg-color);
   border-top: 1px solid var(--ryu-border);
 }
@@ -516,6 +558,7 @@
   scrollbar-width: thin;
   scrollbar-color: var(--md-default-fg-color--lightest) transparent;
 }
+
 .md-footer-meta {
   display: none;
 }

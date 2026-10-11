@@ -55,7 +55,10 @@ nav:
   - Extraa:
       - WavyProgress: extraa/wavy-progress.md
       - MaterialSlider: extraa/material-slider.md
+      - MaterialButtonGroup: extraa/material-button-group.md
   - Shapes:
       - MaterialShape: shapes/material-shape.md
+  - Cleave:
+      - Cleave: cleave/cleave.md
 extra:
   generator: false
