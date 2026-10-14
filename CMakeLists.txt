@@ -130,6 +130,7 @@ ryu_module(Extraa
         Extraa/materialswitch.hpp
         Extraa/materialsearchbox.cpp
         Extraa/materialsearchbox.hpp
+        Extraa/materialmenu.cpp
     LIBS
         Qt6::Quick
 )
