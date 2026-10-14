@@ -148,7 +148,7 @@ MaterialButtonGroup {
 
 ```qml
 MaterialButtonGroup {
-    iconFont.family: "Material Symbols Rounded"
+    iconFont.family: "CaskaydiaCove NF"
     icons: ["", "", ""]   // use the glyphs from your font
     labels: ["Home", "Search", "Settings"]
     selectionMode: MaterialButtonGroup.Single

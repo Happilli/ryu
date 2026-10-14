@@ -56,6 +56,7 @@ nav:
       - WavyProgress: extraa/wavy-progress.md
       - MaterialSlider: extraa/material-slider.md
       - MaterialButtonGroup: extraa/material-button-group.md
+      - MaterialSearchBox: extraa/material-search-box.md
   - Shapes:
       - MaterialShape: shapes/material-shape.md
   - Cleave:

@@ -128,6 +128,8 @@ ryu_module(Extraa
         Extraa/materialsplitbutton.hpp
         Extraa/materialswitch.cpp
         Extraa/materialswitch.hpp
+        Extraa/materialsearchbox.cpp
+        Extraa/materialsearchbox.hpp
     LIBS
         Qt6::Quick
 )

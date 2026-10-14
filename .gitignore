@@ -55,3 +55,5 @@ button.qml
 iconbutton.qml
 splitBu.qml
 switch.qml
+search.svg
+search.qml
