@@ -58,6 +58,7 @@ nav:
       - MaterialButtonGroup: extraa/material-button-group.md
       - MaterialSearchBox: extraa/material-search-box.md
       - MaterialMenu: extraa/material-menu.md
+      - MaterialList: extraa/material-list.md
   - Shapes:
       - MaterialShape: shapes/material-shape.md
   - Cleave:
