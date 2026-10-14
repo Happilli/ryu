@@ -1,4 +1,5 @@
 #pragma once
+#include <QByteArray>
 #include <QHash>
 #include <QObject>
 #include <QQueue>

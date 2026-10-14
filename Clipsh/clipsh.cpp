@@ -10,7 +10,14 @@
 
 Clipsh::Clipsh(QObject *parent) : QObject(parent) {}
 
-Clipsh::~Clipsh() = default;
+Clipsh::~Clipsh() {
+  const auto procs = findChildren<QProcess *>();
+  for (QProcess *p : procs) {
+    p->disconnect();
+    p->kill();
+    p->waitForFinished(200);
+  }
+}
 
 void Clipsh::run(const QString &program, const QStringList &args,
                  const QByteArray &input, Done done) {
@@ -177,19 +184,21 @@ void Clipsh::copyItem(const QString &entry) {
         }
 
         run(args.first(), args.mid(1), payload,
-            [this](bool ok, const QByteArray &, const QString &err) {
-              if (!ok)
-                emit error("wl-copy failed: " + err);
+            [this, entry](bool copied, const QByteArray &,
+                          const QString &werr) {
+              if (!copied)
+                emit error("wl-copy failed: " + werr);
+
+              run("cliphist", {"delete"}, entry.toUtf8(),
+                  [this, entry](bool, const QByteArray &, const QString &) {
+                    removeLocal(entry);
+                    emit itemCopied(entry);
+                    emit actionFinished();
+                  });
             });
-
-        run("cliphist", {"delete"}, entry.toUtf8(),
-            [](bool, const QByteArray &, const QString &) {});
-
-        removeLocal(entry);
-        emit itemCopied(entry);
-        emit actionFinished();
       });
 }
+
 void Clipsh::deleteItem(const QString &entry) {
   run("cliphist", {"delete"}, entry.toUtf8(),
       [this, entry](bool ok, const QByteArray &, const QString &err) {
