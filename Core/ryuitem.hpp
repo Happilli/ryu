@@ -11,6 +11,7 @@ public:
   explicit RyuItem(QQuickItem *parent = nullptr);
 
 protected:
+  void itemChange(ItemChange change, const ItemChangeData &data) override;
   virtual void propertyAssigned() {}
 
   template <typename D, typename T>

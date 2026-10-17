@@ -14,7 +14,11 @@ void RyuItem::preparePainter(QPainter *p) const {
   if (!isEnabled())
     p->setOpacity(Ryu::kDisabledOpacity);
 }
-
+void RyuItem::itemChange(ItemChange change, const ItemChangeData &data) {
+  QQuickPaintedItem::itemChange(change, data);
+  if (change == ItemEnabledHasChanged)
+    update();
+}
 MaterialItem::MaterialItem(QQuickItem *parent, qreal stiffness, qreal damping)
     : RyuItem(parent), m_stiffness(stiffness), m_damping(damping),
       m_driver(new Ryu::SpringDriver(this)) {
