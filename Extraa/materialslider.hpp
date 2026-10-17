@@ -1,16 +1,15 @@
 #pragma once
+#include "../Core/paintutil.hpp"
+#include "../Core/ryuitem.hpp"
 #include <QColor>
 #include <QFont>
-#include <QImage>
 #include <QKeyEvent>
 #include <QMouseEvent>
-#include <QQuickPaintedItem>
 #include <QString>
 #include <QUrl>
 #include <QVariantAnimation>
-#include <QtQmlIntegration/qqmlintegration.h>
 
-class MaterialSlider : public QQuickPaintedItem {
+class MaterialSlider : public RyuItem {
   Q_OBJECT
   QML_ELEMENT
 
@@ -187,16 +186,6 @@ protected:
   void keyPressEvent(QKeyEvent *e) override;
 
 private:
-  template <typename T, typename Sig>
-  bool assign(T &field, const T &v, Sig sig) {
-    if (field == v)
-      return false;
-    field = v;
-    (this->*sig)();
-    update();
-    return true;
-  }
-
   void setOverride(qreal &field, qreal v, void (MaterialSlider::*sig)());
 
   bool horizontal() const { return m_orientation == Horizontal; }
@@ -211,7 +200,6 @@ private:
   void updateFromPos(const QPointF &pt);
   void updateImplicit();
   void setPressed(bool v);
-  void buildIcon(qreal dpr);
 
   qreal m_from = 0.0;
   qreal m_to = 1.0;
@@ -234,13 +222,12 @@ private:
   qreal m_borderWidth = 0.0;
 
   QUrl m_iconSource;
+  QString m_iconPath;
   QString m_iconText;
   QFont m_iconFont;
   QColor m_iconColor = QColor("#FFFFFF");
   qreal m_iconSize = 24.0;
-  QImage m_icon;
-  int m_iconPx = 0;
-  bool m_iconDirty = true;
+  Ryu::IconCache m_iconCache;
 
   QColor m_color = QColor("#6750A4");
   QColor m_trackColor = QColor("#E8DEF8");

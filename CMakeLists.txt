@@ -3,11 +3,21 @@ project(ryu)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_AUTOMOC ON)
 
-find_package(Qt6 REQUIRED COMPONENTS Core Qml Gui Quick Sql ShaderTools)
+find_package(Qt6 REQUIRED COMPONENTS Core Qml Gui Quick Sql)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(PIPEWIRE REQUIRED libpipewire-0.3)
 
 qt_policy(SET QTP0001 NEW)
+
+add_library(RyuCore STATIC
+    Core/paintutil.cpp
+    Core/paintutil.hpp
+    Core/sizes.hpp
+    Core/spring.hpp
+)
+set_target_properties(RyuCore PROPERTIES POSITION_INDEPENDENT_CODE ON)
+target_include_directories(RyuCore PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(RyuCore PUBLIC Qt6::Core Qt6::Gui Qt6::Qml Qt6::Quick)
 
 function(ryu_module name)
     cmake_parse_arguments(ARG "" "" "SOURCES;LIBS" ${ARGN})
@@ -66,22 +76,6 @@ ryu_module(Clipsh
         Clipsh/clipsh.hpp
 )
 
-ryu_module(Drawness
-    SOURCES
-        Drawness/drawness.cpp
-        Drawness/drawness.hpp
-    LIBS
-        Qt6::Quick
-)
-
-qt_add_shaders(Drawness "drawness_shaders"
-    PREFIX
-        "/qt/qml/Ryu"
-    FILES
-        "Drawness/jiggle/jiggle.vert"
-        "Drawness/jiggle/jiggle.frag"
-)
-
 ryu_module(Sqliter
     SOURCES
         Sqliter/eventsservice.cpp
@@ -103,19 +97,21 @@ ryu_module(Shapes
         Shapes/materialshape.cpp
         Shapes/materialshape.hpp
         Shapes/materialshapeborder.hpp
-        Shapes/springdriver.hpp
         Shapes/svgpath.cpp
         Shapes/svgpath.hpp
         Shapes/morph.cpp
         Shapes/morph.hpp
     LIBS
         Qt6::Quick
+        RyuCore
 )
 
 target_sources(Shapes PRIVATE Shapes/shapedata.inc)
 
 ryu_module(Extraa
     SOURCES
+        Core/ryuitem.cpp
+        Core/ryuitem.hpp
         Extraa/wavyprogress.cpp
         Extraa/wavyprogress.hpp
         Extraa/materialslider.cpp
@@ -136,4 +132,5 @@ ryu_module(Extraa
         Extraa/materiallist.hpp
     LIBS
         Qt6::Quick
+        RyuCore
 )

@@ -1,17 +1,14 @@
 #pragma once
+#include "../Core/ryuitem.hpp"
 #include <QColor>
 #include <QFocusEvent>
 #include <QFont>
 #include <QHoverEvent>
 #include <QKeyEvent>
 #include <QMouseEvent>
-#include <QQuickPaintedItem>
 #include <QString>
-#include <QtQmlIntegration/qqmlintegration.h>
 
-class QAbstractAnimation;
-
-class MaterialSplitButton : public QQuickPaintedItem {
+class MaterialSplitButton : public MaterialItem {
   Q_OBJECT
   QML_ELEMENT
 
@@ -37,11 +34,6 @@ class MaterialSplitButton : public QQuickPaintedItem {
   Q_PROPERTY(qreal borderWidth READ borderWidth WRITE setBorderWidth NOTIFY
                  borderWidthChanged)
 
-  Q_PROPERTY(qreal springStiffness READ springStiffness WRITE setSpringStiffness
-                 NOTIFY springStiffnessChanged)
-  Q_PROPERTY(qreal springDamping READ springDamping WRITE setSpringDamping
-                 NOTIFY springDampingChanged)
-
 public:
   enum Type { Filled, Tonal, Elevated, Outlined };
   Q_ENUM(Type)
@@ -62,8 +54,6 @@ public:
   QColor contentColor() const { return m_contentColor; }
   QColor borderColor() const { return m_borderColor; }
   qreal borderWidth() const { return m_borderWidth; }
-  qreal springStiffness() const { return m_stiffness; }
-  qreal springDamping() const { return m_damping; }
 
   void setLabel(const QString &v);
   void setIconText(const QString &v);
@@ -77,8 +67,6 @@ public:
   void setContentColor(const QColor &v);
   void setBorderColor(const QColor &v);
   void setBorderWidth(qreal v);
-  void setSpringStiffness(qreal v);
-  void setSpringDamping(qreal v);
 
   void paint(QPainter *p) override;
 
@@ -95,12 +83,11 @@ signals:
   void contentColorChanged();
   void borderColorChanged();
   void borderWidthChanged();
-  void springStiffnessChanged();
-  void springDampingChanged();
   void clicked();
   void menuClicked();
 
 protected:
+  bool advance(qreal dt) override;
   void mousePressEvent(QMouseEvent *e) override;
   void mouseReleaseEvent(QMouseEvent *e) override;
   void mouseUngrabEvent() override;
@@ -113,22 +100,6 @@ protected:
 private:
   enum Zone { None = -1, Lead = 0, Trail = 1 };
 
-  struct Spring {
-    qreal x = 0.0;
-    qreal v = 0.0;
-    qreal t = 0.0;
-  };
-
-  template <typename T, typename Sig>
-  bool assign(T &field, const T &v, Sig sig) {
-    if (field == v)
-      return false;
-    field = v;
-    (this->*sig)();
-    update();
-    return true;
-  }
-
   QFont labelFont() const;
   qreal textWidth() const;
   qreal leadWidth() const;
@@ -140,8 +111,6 @@ private:
   void setHoverZone(int z);
   void activate(int zone);
   void retarget(bool immediate = false);
-  void ensureDriver();
-  void tick(qreal dt);
 
   QString m_label;
   QString m_iconText;
@@ -157,9 +126,6 @@ private:
   QColor m_borderColor = QColor("#79747E");
   qreal m_borderWidth = 1.0;
 
-  qreal m_stiffness = 520.0;
-  qreal m_damping = 0.5;
-
   int m_pressZone = None;
   int m_hoverZone = None;
   bool m_keyFocus = false;
@@ -167,6 +133,4 @@ private:
   Spring m_roundLead;
   Spring m_roundTrail;
   Spring m_chev;
-
-  QAbstractAnimation *m_driver = nullptr;
 };

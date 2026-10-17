@@ -1,18 +1,15 @@
 #pragma once
+#include "../Core/ryuitem.hpp"
 #include <QColor>
 #include <QFont>
 #include <QHoverEvent>
 #include <QKeyEvent>
 #include <QMouseEvent>
-#include <QQuickPaintedItem>
 #include <QString>
 #include <QVariant>
 #include <QVector>
-#include <QtQmlIntegration/qqmlintegration.h>
 
-class QAbstractAnimation;
-
-class MaterialMenu : public QQuickPaintedItem {
+class MaterialMenu : public MaterialItem {
   Q_OBJECT
   QML_ELEMENT
 
@@ -51,11 +48,6 @@ class MaterialMenu : public QQuickPaintedItem {
   Q_PROPERTY(QColor borderColor READ borderColor WRITE setBorderColor NOTIFY
                  borderColorChanged)
 
-  Q_PROPERTY(qreal springStiffness READ springStiffness WRITE setSpringStiffness
-                 NOTIFY springStiffnessChanged)
-  Q_PROPERTY(qreal springDamping READ springDamping WRITE setSpringDamping
-                 NOTIFY springDampingChanged)
-
 public:
   explicit MaterialMenu(QQuickItem *parent = nullptr);
 
@@ -78,8 +70,6 @@ public:
   QColor dangerColor() const { return m_dangerColor; }
   QColor separatorColor() const { return m_separatorColor; }
   QColor borderColor() const { return m_borderColor; }
-  qreal springStiffness() const { return m_stiffness; }
-  qreal springDamping() const { return m_damping; }
 
   void setModel(const QVariantList &v);
   void setOpen(bool v);
@@ -99,8 +89,6 @@ public:
   void setDangerColor(const QColor &v);
   void setSeparatorColor(const QColor &v);
   void setBorderColor(const QColor &v);
-  void setSpringStiffness(qreal v);
-  void setSpringDamping(qreal v);
 
   Q_INVOKABLE void popup(qreal x, qreal y);
   Q_INVOKABLE void close() { setOpen(false); }
@@ -127,13 +115,12 @@ signals:
   void dangerColorChanged();
   void separatorColorChanged();
   void borderColorChanged();
-  void springStiffnessChanged();
-  void springDampingChanged();
   void triggered(int index, const QVariant &item);
   void opened();
   void closed();
 
 protected:
+  bool advance(qreal dt) override;
   void geometryChange(const QRectF &n, const QRectF &o) override;
   void mousePressEvent(QMouseEvent *e) override;
   void mouseReleaseEvent(QMouseEvent *e) override;
@@ -153,22 +140,6 @@ private:
     bool danger = false;
   };
 
-  struct Spring {
-    qreal x = 0.0;
-    qreal v = 0.0;
-    qreal t = 0.0;
-  };
-
-  template <typename T, typename Sig>
-  bool assign(T &field, const T &v, Sig sig) {
-    if (field == v)
-      return false;
-    field = v;
-    (this->*sig)();
-    update();
-    return true;
-  }
-
   QFont labelFont() const;
   QFont shortcutFont() const;
   void ensureMetrics() const;
@@ -182,8 +153,6 @@ private:
   void setCurrent(int i);
   void trigger(int i);
   void retarget();
-  void ensureDriver();
-  void tick(qreal dt);
   void applyPop();
 
   QVariantList m_raw;
@@ -208,9 +177,6 @@ private:
   QColor m_borderColor = QColor("#79747E");
   QColor m_hlBase = QColor("#1D1B20");
 
-  qreal m_stiffness = 520.0;
-  qreal m_damping = 0.6;
-
   bool m_open = false;
   int m_current = -1;
   int m_pressIndex = -1;
@@ -229,5 +195,4 @@ private:
   Spring m_hlY;
   Spring m_hlH;
   Spring m_hlA;
-  QAbstractAnimation *m_driver = nullptr;
 };

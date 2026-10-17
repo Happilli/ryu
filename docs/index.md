@@ -14,7 +14,6 @@ It is a personal project. It works on my machine. Your machine is a side quest.
 | **Shapes** | `MaterialShape`, with 35 shapes that morph into each other using springs | Yes |
 | **Cleave** | Audio visualizer. PipeWire in, FFT out, bars go brrr | Soon™ |
 | **Clipsh** | Clipboard history on top of `cliphist` and `wl-copy` | Soon™ |
-| **Drawness** | A scene-graph drawing item with undo/redo | Soon™ |
 | **Sqliter** | SQLite-backed events storage | Soon™ |
 | **Warsa** | Nepali (BS) calendar logic | Soon™ |
 

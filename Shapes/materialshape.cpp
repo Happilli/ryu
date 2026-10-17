@@ -1,12 +1,8 @@
 #include "./materialshape.hpp"
-#include "./springdriver.hpp"
-#include <QDir>
-#include <QFileInfo>
+#include "../Core/paintutil.hpp"
 #include <QPainter>
 #include <QPen>
-#include <QQmlContext>
 #include <QQmlEngine>
-#include <QQmlFile>
 #include <QQuickWindow>
 #include <algorithm>
 #include <cmath>
@@ -22,7 +18,6 @@ constexpr qreal kRotStiffness = 90.0;
 constexpr qreal kRotDamping = 0.6;
 constexpr qreal kImageBleed = 1.15;
 constexpr qreal kLoadBleed = 1.45;
-constexpr qreal kMaxStep = 0.004;
 
 constexpr std::array<MaterialShape::Type, 7> kDefaultLoading = {
     MaterialShape::SoftBurst, MaterialShape::Cookie9Sided,
@@ -31,31 +26,6 @@ constexpr std::array<MaterialShape::Type, 7> kDefaultLoading = {
     MaterialShape::Oval};
 
 } // namespace
-
-QString MaterialShape::resolveSourcePath(const QUrl &u) const {
-  if (u.isLocalFile() || u.scheme().compare("qrc", Qt::CaseInsensitive) == 0)
-    return QQmlFile::urlToLocalFileOrQrc(u);
-
-  if (!u.scheme().isEmpty() && u.scheme().size() != 1)
-    return {};
-
-  QString p = u.toString();
-  if (p.startsWith(QLatin1String("~/")))
-    p = QDir::homePath() + p.mid(1);
-
-  if (QDir::isAbsolutePath(p))
-    return p;
-
-  if (const QQmlContext *ctx = qmlContext(this)) {
-    const QString local =
-        QQmlFile::urlToLocalFileOrQrc(ctx->resolvedUrl(QUrl(p)));
-    if (!local.isEmpty() &&
-        (local.startsWith(QLatin1Char(':')) || QFileInfo::exists(local)))
-      return local;
-  }
-
-  return QFileInfo(p).absoluteFilePath();
-}
 
 MaterialShape::MaterialShape(QQuickItem *parent) : QQuickPaintedItem(parent) {
   setAntialiasing(true);
@@ -70,9 +40,8 @@ MaterialShape::MaterialShape(QQuickItem *parent) : QQuickPaintedItem(parent) {
   connect(m_border, &MaterialShapeBorder::colorChanged, this,
           [this] { update(); });
 
-  auto *driver = new SpringDriver(this);
-  driver->tick = [this](qreal dt) { tick(dt); };
-  m_driver = driver;
+  m_driver = new Ryu::SpringDriver(this);
+  m_driver->tick = [this](qreal dt) { tick(dt); };
 
   m_loadTimer = new QTimer(this);
   m_loadTimer->setSingleShot(true);
@@ -104,8 +73,7 @@ void MaterialShape::snapTo(Type t) {
   m_current = Morph::baseCubics(int(t));
   m_from.clear();
   m_to.clear();
-  m_progress = 1.0;
-  m_velocity = 0.0;
+  m_morph = Ryu::Spring{1.0, 0.0, 1.0};
   m_pathDirty = true;
   setMorphing(false);
   emit shapeChanged();
@@ -128,8 +96,7 @@ void MaterialShape::startMorph(Type t) {
   }
 
   m_shape = t;
-  m_progress = 0.0;
-  m_velocity = wasMorphing ? std::max(m_velocity, 0.0) : 0.0;
+  m_morph = Ryu::Spring{0.0, wasMorphing ? std::max(m_morph.v, 0.0) : 0.0, 1.0};
   emit shapeChanged();
 
   setMorphing(true);
@@ -148,55 +115,32 @@ void MaterialShape::tick(qreal dt) {
 void MaterialShape::stepMorph(qreal dt) {
   if (dt <= 0.0)
     return;
-
-  const qreal k = m_stiffness;
-  const qreal c = 2.0 * m_damping * std::sqrt(k);
-  const int steps = std::max(1, int(std::ceil(dt / kMaxStep)));
-  const qreal h = dt / steps;
-  for (int i = 0; i < steps; ++i) {
-    const qreal acc = -k * (m_progress - 1.0) - c * m_velocity;
-    m_velocity += acc * h;
-    m_progress += m_velocity * h;
-  }
-
-  if (std::abs(m_progress - 1.0) < 0.0005 && std::abs(m_velocity) < 0.005) {
+  if (!Ryu::stepSpring(m_morph, m_stiffness, m_damping, dt, 0.0005)) {
     finishMorph();
     return;
   }
-  applyProgress(m_progress);
+  applyProgress(m_morph.x);
 }
 
 bool MaterialShape::stepRotation(qreal dt) {
-  const qreal diff = m_rotTarget - m_rot;
-  if (std::abs(diff) < 0.02 && std::abs(m_rotVel) < 0.2) {
-    if (m_rot != m_rotTarget) {
-      m_rot = m_rotTarget;
-      if (std::abs(m_rot) >= 720.0) {
-        const qreal base = 360.0 * std::floor(m_rot / 360.0);
-        m_rot -= base;
-        m_rotTarget -= base;
-      }
-      setRotation(m_rot);
-      update();
-    }
-    m_rotVel = 0.0;
-    return false;
-  }
   if (dt <= 0.0)
     return true;
 
-  static const qreal c = 2.0 * kRotDamping * std::sqrt(kRotStiffness);
-  const int steps = std::max(1, int(std::ceil(dt / kMaxStep)));
-  const qreal h = dt / steps;
-  for (int i = 0; i < steps; ++i) {
-    const qreal acc = kRotStiffness * (m_rotTarget - m_rot) - c * m_rotVel;
-    m_rotVel += acc * h;
-    m_rot += m_rotVel * h;
+  if (Ryu::stepSpring(m_rot, kRotStiffness, kRotDamping, dt, 0.02)) {
+    setRotation(m_rot.x);
+    if (m_loading && (!m_image.isNull() || !m_glyph.isEmpty()))
+      update();
+    return true;
   }
-  setRotation(m_rot);
-  if (m_loading && (!m_image.isNull() || !m_glyph.isEmpty()))
-    update();
-  return true;
+
+  if (std::abs(m_rot.x) >= 720.0) {
+    const qreal base = 360.0 * std::floor(m_rot.x / 360.0);
+    m_rot.x -= base;
+    m_rot.t -= base;
+  }
+  setRotation(m_rot.x);
+  update();
+  return false;
 }
 
 void MaterialShape::applyProgress(qreal p) {
@@ -218,8 +162,7 @@ void MaterialShape::finishMorph() {
   m_current = Morph::baseCubics(int(m_shape));
   m_from.clear();
   m_to.clear();
-  m_progress = 1.0;
-  m_velocity = 0.0;
+  m_morph = Ryu::Spring{1.0, 0.0, 1.0};
   m_pathDirty = true;
   setMorphing(false);
   update();
@@ -306,6 +249,7 @@ void MaterialShape::setContainedScale(qreal v) {
   emit containedScaleChanged();
   update();
 }
+
 void MaterialShape::setLoadingAllShapes(bool v) {
   if (m_loadAll == v)
     return;
@@ -326,9 +270,7 @@ void MaterialShape::setLoadingSequence(const QList<int> &seq) {
 }
 
 void MaterialShape::startLoading() {
-  m_rot = rotation();
-  m_rotTarget = m_rot;
-  m_rotVel = 0.0;
+  m_rot = Ryu::Spring{rotation(), 0.0, rotation()};
   m_loadIndex = loadCount() - 1;
   advanceLoading();
 }
@@ -338,7 +280,7 @@ void MaterialShape::advanceLoading() {
     return;
 
   m_loadIndex = (m_loadIndex + 1) % loadCount();
-  m_rotTarget += m_loadKick;
+  m_rot.t += m_loadKick;
   ensureDriver();
 
   const Type next = loadShapeAt(m_loadIndex);
@@ -363,7 +305,7 @@ void MaterialShape::setSource(const QUrl &u) {
   m_image = QImage();
   m_scaled = QImage();
   if (u.isValid() && !u.isEmpty()) {
-    const QString path = resolveSourcePath(u);
+    const QString path = Ryu::resolveUrl(qmlContext(this), u);
     if (path.isEmpty() || !m_image.load(path))
       qWarning("MaterialShape: failed to load image '%s' (resolved: '%s')",
                qPrintable(u.toString()), qPrintable(path));
@@ -579,26 +521,14 @@ void MaterialShape::paint(QPainter *p) {
   }
 
   if (!m_glyph.isEmpty() && m_glyphSize > 0.0) {
-    QFont f = m_glyphFont;
-    f.setPixelSize(qMax(1, qRound(m_glyphSize)));
-    f.setHintingPreference(QFont::PreferNoHinting);
-
-    QPainterPath gp;
-    gp.addText(QPointF(0.0, 0.0), f, m_glyph);
-    const QRectF br = gp.boundingRect();
-
-    if (!br.isEmpty()) {
-      p->save();
-      p->setClipPath(m_path);
-      p->translate(width() / 2.0, height() / 2.0);
-      if (m_loading)
-        p->rotate(-rotation());
-      p->translate(-br.center());
-      p->setPen(Qt::NoPen);
-      p->setBrush(m_glyphColor);
-      p->drawPath(gp);
-      p->restore();
-    }
+    p->save();
+    p->setClipPath(m_path);
+    p->translate(width() / 2.0, height() / 2.0);
+    if (m_loading)
+      p->rotate(-rotation());
+    Ryu::drawGlyph(p, m_glyphFont, m_glyph, QPointF(0.0, 0.0), m_glyphSize,
+                   m_glyphColor);
+    p->restore();
   }
 
   const qreal bw = m_border->width();

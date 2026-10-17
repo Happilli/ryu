@@ -1,9 +1,7 @@
 #include "./materialslider.hpp"
-#include <QImageReader>
 #include <QPainter>
 #include <QPainterPath>
-#include <QPen>
-#include <QQmlFile>
+#include <QQmlEngine>
 #include <QQuickWindow>
 #include <algorithm>
 #include <cmath>
@@ -24,33 +22,9 @@ constexpr qreal kIndicatorSpace = 52.0;
 constexpr qreal kDefaultLength = 200.0;
 constexpr qreal kIconMinPad = 4.0;
 constexpr qreal kIconMaxPad = 16.0;
-
-QPainterPath sidedRect(qreal x0, qreal x1, qreal hh, qreal rl, qreal rr) {
-  const qreal maxR = std::min(hh, (x1 - x0) / 2.0);
-  rl = std::clamp(rl, 0.0, maxR);
-  rr = std::clamp(rr, 0.0, maxR);
-
-  QPainterPath p;
-  p.moveTo(x0 + rl, -hh);
-  p.lineTo(x1 - rr, -hh);
-  if (rr > 0.0)
-    p.arcTo(x1 - 2 * rr, -hh, 2 * rr, 2 * rr, 90, -90);
-  p.lineTo(x1, hh - rr);
-  if (rr > 0.0)
-    p.arcTo(x1 - 2 * rr, hh - 2 * rr, 2 * rr, 2 * rr, 0, -90);
-  p.lineTo(x0 + rl, hh);
-  if (rl > 0.0)
-    p.arcTo(x0, hh - 2 * rl, 2 * rl, 2 * rl, 270, -90);
-  p.lineTo(x0, -hh + rl);
-  if (rl > 0.0)
-    p.arcTo(x0, -hh, 2 * rl, 2 * rl, 180, -90);
-  p.closeSubpath();
-  return p;
-}
 } // namespace
 
-MaterialSlider::MaterialSlider(QQuickItem *parent) : QQuickPaintedItem(parent) {
-  setAntialiasing(true);
+MaterialSlider::MaterialSlider(QQuickItem *parent) : RyuItem(parent) {
   setAcceptedMouseButtons(Qt::LeftButton);
   setActiveFocusOnTab(true);
 
@@ -281,7 +255,7 @@ void MaterialSlider::setDecimals(int v) {
 
 void MaterialSlider::setIconSource(const QUrl &v) {
   if (assign(m_iconSource, v, &MaterialSlider::iconSourceChanged))
-    m_iconDirty = true;
+    m_iconPath.clear();
 }
 
 void MaterialSlider::setIconText(const QString &v) {
@@ -293,13 +267,11 @@ void MaterialSlider::setIconFont(const QFont &v) {
 }
 
 void MaterialSlider::setIconColor(const QColor &v) {
-  if (assign(m_iconColor, v, &MaterialSlider::iconColorChanged))
-    m_iconDirty = true;
+  assign(m_iconColor, v, &MaterialSlider::iconColorChanged);
 }
 
 void MaterialSlider::setIconSize(qreal v) {
-  if (assign(m_iconSize, std::max(0.0, v), &MaterialSlider::iconSizeChanged))
-    m_iconDirty = true;
+  assign(m_iconSize, std::max(0.0, v), &MaterialSlider::iconSizeChanged);
 }
 
 void MaterialSlider::setColor(const QColor &v) {
@@ -324,45 +296,6 @@ void MaterialSlider::setIndicatorColor(const QColor &v) {
 
 void MaterialSlider::setIndicatorTextColor(const QColor &v) {
   assign(m_indicatorTextColor, v, &MaterialSlider::indicatorTextColorChanged);
-}
-
-void MaterialSlider::buildIcon(qreal dpr) {
-  const int px = qRound(m_iconSize * dpr);
-  if (!m_iconDirty && px == m_iconPx)
-    return;
-  m_iconDirty = false;
-  m_iconPx = px;
-  m_icon = QImage();
-  if (px <= 0 || !m_iconSource.isValid() || m_iconSource.isEmpty())
-    return;
-
-  const QString path = QQmlFile::urlToLocalFileOrQrc(m_iconSource);
-  QImageReader r(path);
-  QSize s = r.size();
-  if (s.isValid()) {
-    s.scale(px, px, Qt::KeepAspectRatio);
-    r.setScaledSize(s);
-  }
-  const QImage src = r.read();
-  if (src.isNull()) {
-    qWarning("MaterialSlider: failed to load icon '%s'", qPrintable(path));
-    return;
-  }
-
-  QImage out(px, px, QImage::Format_ARGB32_Premultiplied);
-  out.fill(Qt::transparent);
-  QPainter q(&out);
-  q.setRenderHint(QPainter::SmoothPixmapTransform, true);
-  QSize d = src.size();
-  d.scale(px, px, Qt::KeepAspectRatio);
-  q.drawImage(
-      QRect((px - d.width()) / 2, (px - d.height()) / 2, d.width(), d.height()),
-      src);
-  q.setCompositionMode(QPainter::CompositionMode_SourceIn);
-  q.fillRect(out.rect(), m_iconColor);
-  q.end();
-  out.setDevicePixelRatio(dpr);
-  m_icon = std::move(out);
 }
 
 void MaterialSlider::updateFromPos(const QPointF &pt) {
@@ -440,9 +373,7 @@ void MaterialSlider::paint(QPainter *p) {
   if (len <= 0.0 || range <= 0.0)
     return;
 
-  p->setRenderHint(QPainter::Antialiasing, true);
-  if (!isEnabled())
-    p->setOpacity(0.38);
+  preparePainter(p);
 
   const qreal cc = crossCenter();
   if (horizontal()) {
@@ -467,8 +398,12 @@ void MaterialSlider::paint(QPainter *p) {
   const qreal inactiveStart = hx + hw / 2.0 + gap;
   p->setPen(Qt::NoPen);
 
+  auto seg = [&](qreal a, qreal b, qreal l, qreal r) {
+    return Ryu::sidedRect(QRectF(a, -hh, b - a, trackH), l, r);
+  };
+
   const qreal outer = outerRadius();
-  const QPainterPath pill = sidedRect(0.0, len, hh, outer, outer);
+  const QPainterPath pill = seg(0.0, len, outer, outer);
 
   const bool hasActive = activeEnd > 0.0;
   const bool hasInactive = inactiveStart < len;
@@ -476,32 +411,21 @@ void MaterialSlider::paint(QPainter *p) {
   QPainterPath inactivePath;
 
   if (hasActive) {
-    activePath = sidedRect(0.0, activeEnd, hh, 0.0, inner).intersected(pill);
+    activePath = seg(0.0, activeEnd, 0.0, inner).intersected(pill);
     p->setBrush(m_color);
     p->drawPath(activePath);
   }
   if (hasInactive) {
-    inactivePath =
-        sidedRect(inactiveStart, len, hh, inner, 0.0).intersected(pill);
+    inactivePath = seg(inactiveStart, len, inner, 0.0).intersected(pill);
     p->setBrush(m_trackColor);
     p->drawPath(inactivePath);
   }
 
   if (m_borderWidth > 0.0 && m_borderColor.alpha() > 0) {
-    auto stroke = [&](const QPainterPath &seg) {
-      p->save();
-      p->setClipPath(seg);
-      p->setBrush(Qt::NoBrush);
-      p->setPen(QPen(m_borderColor, m_borderWidth * 2.0, Qt::SolidLine,
-                     Qt::FlatCap, Qt::RoundJoin));
-      p->drawPath(seg);
-      p->restore();
-    };
     if (hasActive)
-      stroke(activePath);
+      Ryu::strokeInside(p, activePath, m_borderColor, m_borderWidth);
     if (hasInactive)
-      stroke(inactivePath);
-    p->setPen(Qt::NoPen);
+      Ryu::strokeInside(p, inactivePath, m_borderColor, m_borderWidth);
   }
 
   const bool hasImage = m_iconSource.isValid() && !m_iconSource.isEmpty() &&
@@ -515,42 +439,30 @@ void MaterialSlider::paint(QPainter *p) {
     const bool fits = activeEnd >= iconCx + m_iconSize / 2.0 + kIconMinPad;
 
     if (hasImage && fits) {
-      buildIcon(window() ? window()->devicePixelRatio() : 1.0);
-      if (!m_icon.isNull()) {
+      if (m_iconPath.isEmpty())
+        m_iconPath = Ryu::resolveUrl(qmlContext(this), m_iconSource);
+      const QImage &img = m_iconCache.get(
+          m_iconPath, m_iconSize, window() ? window()->devicePixelRatio() : 1.0,
+          m_iconColor);
+      if (!img.isNull()) {
         p->save();
         p->translate(iconCx, 0.0);
         if (!horizontal())
           p->rotate(90.0);
-        p->drawImage(QPointF(-m_iconSize / 2.0, -m_iconSize / 2.0), m_icon);
+        p->drawImage(QPointF(-m_iconSize / 2.0, -m_iconSize / 2.0), img);
         p->restore();
       }
     }
 
     if (hasGlyph && fits) {
-      QFont f = m_iconFont;
-      f.setPixelSize(qMax(1, qRound(m_iconSize)));
-      f.setHintingPreference(QFont::PreferNoHinting);
-
-      QPainterPath gp;
-      gp.addText(QPointF(0.0, 0.0), f, m_iconText);
-      const QRectF br = gp.boundingRect();
-
-      if (!br.isEmpty()) {
-        const qreal k =
-            std::min(1.0, m_iconSize / std::max(br.width(), br.height()));
-
-        p->save();
-        p->translate(iconCx, 0.0);
-        if (!horizontal())
-          p->rotate(90.0);
-        p->scale(k, k);
-        p->translate(-br.center());
-        p->setPen(Qt::NoPen);
-        p->setBrush(m_iconColor);
-        p->drawPath(gp);
-        p->restore();
-        p->setPen(Qt::NoPen);
-      }
+      p->save();
+      p->translate(iconCx, 0.0);
+      if (!horizontal())
+        p->rotate(90.0);
+      Ryu::drawGlyph(p, m_iconFont, m_iconText, QPointF(0.0, 0.0), m_iconSize,
+                     m_iconColor);
+      p->restore();
+      p->setPen(Qt::NoPen);
     }
   }
 

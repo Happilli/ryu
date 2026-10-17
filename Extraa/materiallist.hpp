@@ -1,4 +1,5 @@
 #pragma once
+#include "../Core/ryuitem.hpp"
 #include <QColor>
 #include <QFocusEvent>
 #include <QFont>
@@ -7,16 +8,12 @@
 #include <QKeyEvent>
 #include <QList>
 #include <QMouseEvent>
-#include <QQuickPaintedItem>
 #include <QRectF>
 #include <QString>
 #include <QVariant>
 #include <QVector>
-#include <QtQmlIntegration/qqmlintegration.h>
 
-class QAbstractAnimation;
-
-class MaterialList : public QQuickPaintedItem {
+class MaterialList : public MaterialItem {
   Q_OBJECT
   QML_ELEMENT
 
@@ -54,11 +51,6 @@ class MaterialList : public QQuickPaintedItem {
   Q_PROPERTY(QColor dividerColor READ dividerColor WRITE setDividerColor NOTIFY
                  dividerColorChanged)
 
-  Q_PROPERTY(qreal springStiffness READ springStiffness WRITE setSpringStiffness
-                 NOTIFY springStiffnessChanged)
-  Q_PROPERTY(qreal springDamping READ springDamping WRITE setSpringDamping
-                 NOTIFY springDampingChanged)
-
 public:
   enum Variant { Standard, Segmented };
   Q_ENUM(Variant)
@@ -86,8 +78,6 @@ public:
   QColor avatarColor() const { return m_avatarColor; }
   QColor avatarTextColor() const { return m_avatarTextColor; }
   QColor dividerColor() const { return m_dividerColor; }
-  qreal springStiffness() const { return m_stiffness; }
-  qreal springDamping() const { return m_damping; }
 
   void setModel(const QVariantList &v);
   void setVariant(Variant v);
@@ -105,8 +95,6 @@ public:
   void setAvatarColor(const QColor &v);
   void setAvatarTextColor(const QColor &v);
   void setDividerColor(const QColor &v);
-  void setSpringStiffness(qreal v);
-  void setSpringDamping(qreal v);
 
   Q_INVOKABLE bool isChecked(int i) const { return m_checked.contains(i); }
   Q_INVOKABLE void setChecked(int i, bool on);
@@ -129,11 +117,10 @@ signals:
   void avatarColorChanged();
   void avatarTextColorChanged();
   void dividerColorChanged();
-  void springStiffnessChanged();
-  void springDampingChanged();
   void clicked(int index, const QVariant &item);
 
 protected:
+  bool advance(qreal dt) override;
   void geometryChange(const QRectF &n, const QRectF &o) override;
   void mousePressEvent(QMouseEvent *e) override;
   void mouseReleaseEvent(QMouseEvent *e) override;
@@ -164,23 +151,6 @@ private:
     }
   };
 
-  struct Spring {
-    qreal x = 0.0;
-    qreal v = 0.0;
-    qreal t = 0.0;
-  };
-
-  template <typename T, typename Sig>
-  bool assign(T &field, const T &v, Sig sig) {
-    if (field == v)
-      return false;
-    field = v;
-    (this->*sig)();
-    update();
-    return true;
-  }
-
-  QFont textFont(qreal px, int weight) const;
   QColor resolvedItemColor() const;
   qreal rowHeight(const Entry &e) const;
   qreal itemGap() const;
@@ -191,8 +161,6 @@ private:
   int rowAt(const QPointF &pt) const;
   int step(int from, int dir) const;
   void activate(int i);
-  void ensureDriver();
-  void tick(qreal dt);
 
   QVariantList m_raw;
   QVector<Entry> m_items;
@@ -214,9 +182,6 @@ private:
   QColor m_avatarTextColor = QColor("#21005D");
   QColor m_dividerColor = QColor("#CAC4D0");
 
-  qreal m_stiffness = 520.0;
-  qreal m_damping = 0.6;
-
   QVector<QRectF> m_rects;
   bool m_layoutDirty = true;
 
@@ -227,5 +192,4 @@ private:
   bool m_keyFocus = false;
 
   Spring m_press;
-  QAbstractAnimation *m_driver = nullptr;
 };

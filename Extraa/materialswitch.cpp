@@ -1,5 +1,5 @@
 #include "./materialswitch.hpp"
-#include "../Shapes/springdriver.hpp"
+#include "../Core/paintutil.hpp"
 #include <QPainter>
 #include <QPainterPath>
 #include <QPen>
@@ -17,81 +17,32 @@ constexpr qreal kOffIconD = 24.0;
 constexpr qreal kOnD = 24.0;
 constexpr qreal kPressD = 28.0;
 constexpr qreal kLayerD = 40.0;
-constexpr qreal kMaxStep = 0.004;
-
-bool stepSpring(qreal &x, qreal &v, qreal t, qreal k, qreal z, qreal dt,
-                qreal eps) {
-  if (std::abs(x - t) < eps && std::abs(v) < eps * 10.0) {
-    x = t;
-    v = 0.0;
-    return false;
-  }
-  const qreal c = 2.0 * z * std::sqrt(k);
-  const int steps = std::max(1, int(std::ceil(dt / kMaxStep)));
-  const qreal h = dt / steps;
-  for (int i = 0; i < steps; ++i) {
-    const qreal acc = -k * (x - t) - c * v;
-    v += acc * h;
-    x += v * h;
-  }
-  return true;
-}
-
-QColor mix(const QColor &a, const QColor &b, qreal t) {
-  t = std::clamp(t, 0.0, 1.0);
-  return QColor::fromRgbF(a.redF() + (b.redF() - a.redF()) * t,
-                          a.greenF() + (b.greenF() - a.greenF()) * t,
-                          a.blueF() + (b.blueF() - a.blueF()) * t,
-                          a.alphaF() + (b.alphaF() - a.alphaF()) * t);
-}
 } // namespace
 
-MaterialSwitch::MaterialSwitch(QQuickItem *parent) : QQuickPaintedItem(parent) {
-  setAntialiasing(true);
+MaterialSwitch::MaterialSwitch(QQuickItem *parent)
+    : MaterialItem(parent, 520.0, 0.55) {
   setAcceptedMouseButtons(Qt::LeftButton);
   setAcceptHoverEvents(true);
   setActiveFocusOnTab(true);
   setImplicitWidth(kTrackW);
   setImplicitHeight(kTrackH);
-
-  auto *driver = new SpringDriver(this);
-  driver->tick = [this](qreal dt) { tick(dt); };
-  m_driver = driver;
-
   retarget(true);
 }
 
 void MaterialSwitch::retarget(bool immediate) {
   if (!m_dragging)
-    m_pos.t = m_checked ? 1.0 : 0.0;
-  m_press.t = m_pressed ? 1.0 : 0.0;
-  if (immediate) {
-    m_pos.x = m_pos.t;
-    m_pos.v = 0.0;
-    m_press.x = m_press.t;
-    m_press.v = 0.0;
-    return;
-  }
-  ensureDriver();
+    m_pos.go(m_checked ? 1.0 : 0.0, immediate);
+  m_press.go(m_pressed ? 1.0 : 0.0, immediate);
+  if (!immediate)
+    animate();
 }
 
-void MaterialSwitch::ensureDriver() {
-  if (m_driver->state() != QAbstractAnimation::Running)
-    m_driver->start();
-}
-
-void MaterialSwitch::tick(qreal dt) {
-  if (dt <= 0.0)
-    return;
-  bool active = false;
+bool MaterialSwitch::advance(qreal dt) {
+  bool active = m_dragging;
   if (!m_dragging)
-    active |= stepSpring(m_pos.x, m_pos.v, m_pos.t, m_stiffness, m_damping, dt,
-                         0.001);
-  active |= stepSpring(m_press.x, m_press.v, m_press.t, m_stiffness * 1.4,
-                       m_damping, dt, 0.001);
-  update();
-  if (!active && !m_dragging)
-    m_driver->stop();
+    active |= step(m_pos, dt);
+  active |= step(m_press, dt, 0.001, 1.4);
+  return active;
 }
 
 void MaterialSwitch::setChecked(bool v) {
@@ -120,39 +71,29 @@ void MaterialSwitch::setShowIcons(bool v) {
 void MaterialSwitch::setTrackColor(const QColor &v) {
   assign(m_trackColor, v, &MaterialSwitch::trackColorChanged);
 }
+
 void MaterialSwitch::setCheckedTrackColor(const QColor &v) {
   assign(m_checkedTrackColor, v, &MaterialSwitch::checkedTrackColorChanged);
 }
+
 void MaterialSwitch::setHandleColor(const QColor &v) {
   assign(m_handleColor, v, &MaterialSwitch::handleColorChanged);
 }
+
 void MaterialSwitch::setCheckedHandleColor(const QColor &v) {
   assign(m_checkedHandleColor, v, &MaterialSwitch::checkedHandleColorChanged);
 }
+
 void MaterialSwitch::setBorderColor(const QColor &v) {
   assign(m_borderColor, v, &MaterialSwitch::borderColorChanged);
 }
+
 void MaterialSwitch::setIconColor(const QColor &v) {
   assign(m_iconColor, v, &MaterialSwitch::iconColorChanged);
 }
+
 void MaterialSwitch::setCheckedIconColor(const QColor &v) {
   assign(m_checkedIconColor, v, &MaterialSwitch::checkedIconColorChanged);
-}
-
-void MaterialSwitch::setSpringStiffness(qreal v) {
-  v = std::max(1.0, v);
-  if (qFuzzyCompare(m_stiffness, v))
-    return;
-  m_stiffness = v;
-  emit springStiffnessChanged();
-}
-
-void MaterialSwitch::setSpringDamping(qreal v) {
-  v = qBound(0.05, v, 2.0);
-  if (qFuzzyCompare(m_damping, v))
-    return;
-  m_damping = v;
-  emit springDampingChanged();
 }
 
 void MaterialSwitch::setPressed(bool v) {
@@ -192,7 +133,7 @@ void MaterialSwitch::mouseMoveEvent(QMouseEvent *e) {
   if (!m_dragging && std::abs(dx) > 3.0) {
     m_dragging = true;
     setKeepMouseGrab(true);
-    ensureDriver();
+    animate();
   }
   if (m_dragging) {
     const qreal off = (width() - kTrackW) / 2.0;
@@ -272,9 +213,7 @@ void MaterialSwitch::focusOutEvent(QFocusEvent *e) {
 }
 
 void MaterialSwitch::paint(QPainter *p) {
-  p->setRenderHint(QPainter::Antialiasing, true);
-  if (!isEnabled())
-    p->setOpacity(0.38);
+  preparePainter(p);
 
   const qreal pos = std::clamp(m_pos.x, 0.0, 1.0);
   const qreal press = std::clamp(m_press.x, 0.0, 1.0);
@@ -282,18 +221,17 @@ void MaterialSwitch::paint(QPainter *p) {
   p->translate((width() - kTrackW) / 2.0, (height() - kTrackH) / 2.0);
 
   const QRectF track(0.0, 0.0, kTrackW, kTrackH);
-  const QColor trackBg = mix(m_trackColor, m_checkedTrackColor, pos);
   p->setPen(Qt::NoPen);
-  p->setBrush(trackBg);
+  p->setBrush(Ryu::mix(m_trackColor, m_checkedTrackColor, pos));
   p->drawRoundedRect(track, kTrackH / 2.0, kTrackH / 2.0);
 
   const qreal borderA = 1.0 - pos;
   if (borderA > 0.01 && m_borderColor.alpha() > 0) {
-    QColor bc = m_borderColor;
-    bc.setAlphaF(bc.alphaF() * borderA);
     const qreal half = kBorder / 2.0;
     p->setBrush(Qt::NoBrush);
-    p->setPen(QPen(bc, kBorder));
+    p->setPen(
+        QPen(Ryu::withAlpha(m_borderColor, m_borderColor.alphaF() * borderA),
+             kBorder));
     p->drawRoundedRect(track.adjusted(half, half, -half, -half),
                        kTrackH / 2.0 - half, kTrackH / 2.0 - half);
     p->setPen(Qt::NoPen);
@@ -301,52 +239,42 @@ void MaterialSwitch::paint(QPainter *p) {
 
   const qreal offD = m_showIcons ? kOffIconD : kOffD;
   qreal d = offD + (kOnD - offD) * pos;
-  d = d + (kPressD - d) * press;
-  d = std::max(0.0, d);
+  d = std::max(0.0, d + (kPressD - d) * press);
   const qreal cx = kOffX + (kOnX - kOffX) * pos;
   const qreal cy = kTrackH / 2.0;
-  const QColor handleBg = mix(m_handleColor, m_checkedHandleColor, pos);
 
-  qreal layer = 0.0;
-  if (m_hovered)
-    layer = 0.08;
-  if (m_pressed || (m_keyFocus && hasActiveFocus()))
-    layer = 0.10;
+  const qreal layer =
+      Ryu::stateLayer(m_hovered, m_pressed || (m_keyFocus && hasActiveFocus()));
   if (layer > 0.0) {
-    QColor l = mix(m_handleColor, m_checkedTrackColor, pos);
-    l.setAlphaF(layer);
-    p->setBrush(l);
+    p->setBrush(Ryu::withAlpha(
+        Ryu::mix(m_handleColor, m_checkedTrackColor, pos), layer));
     p->drawEllipse(QPointF(cx, cy), kLayerD / 2.0, kLayerD / 2.0);
   }
 
-  p->setBrush(handleBg);
+  p->setBrush(Ryu::mix(m_handleColor, m_checkedHandleColor, pos));
   p->drawEllipse(QPointF(cx, cy), d / 2.0, d / 2.0);
 
-  if (m_showIcons) {
-    const QColor ic = mix(m_iconColor, m_checkedIconColor, pos);
-    const qreal s = 4.0;
-    QPen pen(ic, 2.0, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin);
-    p->setBrush(Qt::NoBrush);
+  if (!m_showIcons)
+    return;
 
-    const qreal offA = 1.0 - pos;
-    if (offA > 0.02) {
-      QColor c = ic;
-      c.setAlphaF(c.alphaF() * offA);
-      pen.setColor(c);
-      p->setPen(pen);
-      p->drawLine(QPointF(cx - s, cy - s), QPointF(cx + s, cy + s));
-      p->drawLine(QPointF(cx - s, cy + s), QPointF(cx + s, cy - s));
-    }
-    if (pos > 0.02) {
-      QColor c = ic;
-      c.setAlphaF(c.alphaF() * pos);
-      pen.setColor(c);
-      p->setPen(pen);
-      QPainterPath check;
-      check.moveTo(cx - s, cy + 0.5);
-      check.lineTo(cx - s / 3.0, cy + s * 0.8);
-      check.lineTo(cx + s, cy - s * 0.7);
-      p->drawPath(check);
-    }
+  const QColor ic = Ryu::mix(m_iconColor, m_checkedIconColor, pos);
+  const qreal s = 4.0;
+  p->setBrush(Qt::NoBrush);
+
+  const qreal offA = 1.0 - pos;
+  if (offA > 0.02) {
+    p->setPen(QPen(Ryu::withAlpha(ic, ic.alphaF() * offA), 2.0, Qt::SolidLine,
+                   Qt::RoundCap, Qt::RoundJoin));
+    p->drawLine(QPointF(cx - s, cy - s), QPointF(cx + s, cy + s));
+    p->drawLine(QPointF(cx - s, cy + s), QPointF(cx + s, cy - s));
+  }
+  if (pos > 0.02) {
+    p->setPen(QPen(Ryu::withAlpha(ic, ic.alphaF() * pos), 2.0, Qt::SolidLine,
+                   Qt::RoundCap, Qt::RoundJoin));
+    QPainterPath check;
+    check.moveTo(cx - s, cy + 0.5);
+    check.lineTo(cx - s / 3.0, cy + s * 0.8);
+    check.lineTo(cx + s, cy - s * 0.7);
+    p->drawPath(check);
   }
 }

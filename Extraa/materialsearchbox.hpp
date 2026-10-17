@@ -1,21 +1,18 @@
 #pragma once
+#include "../Core/paintutil.hpp"
+#include "../Core/ryuitem.hpp"
 #include <QColor>
 #include <QFocusEvent>
 #include <QFont>
 #include <QHoverEvent>
-#include <QImage>
 #include <QInputMethodEvent>
 #include <QKeyEvent>
 #include <QMouseEvent>
-#include <QQuickPaintedItem>
 #include <QString>
 #include <QTimer>
 #include <QUrl>
-#include <QtQmlIntegration/qqmlintegration.h>
 
-class QAbstractAnimation;
-
-class MaterialSearchBox : public QQuickPaintedItem {
+class MaterialSearchBox : public MaterialItem {
   Q_OBJECT
   QML_ELEMENT
 
@@ -65,11 +62,6 @@ class MaterialSearchBox : public QQuickPaintedItem {
   Q_PROPERTY(QColor selectionColor READ selectionColor WRITE setSelectionColor
                  NOTIFY selectionColorChanged)
 
-  Q_PROPERTY(qreal springStiffness READ springStiffness WRITE setSpringStiffness
-                 NOTIFY springStiffnessChanged)
-  Q_PROPERTY(qreal springDamping READ springDamping WRITE setSpringDamping
-                 NOTIFY springDampingChanged)
-
 public:
   explicit MaterialSearchBox(QQuickItem *parent = nullptr);
 
@@ -99,9 +91,6 @@ public:
   QColor cursorColor() const { return m_cursorColor; }
   QColor selectionColor() const { return m_selectionColor; }
 
-  qreal springStiffness() const { return m_stiffness; }
-  qreal springDamping() const { return m_damping; }
-
   void setText(const QString &v);
   void setPlaceholderText(const QString &v);
   void setFont(const QFont &v);
@@ -125,9 +114,6 @@ public:
   void setBorderWidth(qreal v);
   void setCursorColor(const QColor &v);
   void setSelectionColor(const QColor &v);
-
-  void setSpringStiffness(qreal v);
-  void setSpringDamping(qreal v);
 
   Q_INVOKABLE void clear();
   Q_INVOKABLE void selectAll();
@@ -160,8 +146,6 @@ signals:
   void borderWidthChanged();
   void cursorColorChanged();
   void selectionColorChanged();
-  void springStiffnessChanged();
-  void springDampingChanged();
   void textEdited();
   void accepted();
   void cleared();
@@ -169,6 +153,7 @@ signals:
   void trailingClicked();
 
 protected:
+  bool advance(qreal dt) override;
   void geometryChange(const QRectF &n, const QRectF &o) override;
   void mousePressEvent(QMouseEvent *e) override;
   void mouseMoveEvent(QMouseEvent *e) override;
@@ -186,28 +171,10 @@ protected:
 private:
   enum Zone { None = -1, Leading = 0, Trailing = 1, Clear = 2, Text = 3 };
 
-  struct Spring {
-    qreal x = 0.0;
-    qreal v = 0.0;
-    qreal t = 0.0;
+  struct IconSlot {
+    Ryu::IconCache cache;
+    QString path;
   };
-
-  struct IconCache {
-    QImage img;
-    int px = 0;
-    QColor color;
-    bool dirty = true;
-  };
-
-  template <typename T, typename Sig>
-  bool assign(T &field, const T &v, Sig sig) {
-    if (field == v)
-      return false;
-    field = v;
-    (this->*sig)();
-    update();
-    return true;
-  }
 
   QFont labelFont() const;
   bool leadingShown() const;
@@ -229,7 +196,7 @@ private:
   int selEnd() const { return qMax(m_cursor, m_anchor); }
   QString selectedText() const;
 
-  const QImage &icon(IconCache &c, const QUrl &src, qreal size, qreal dpr);
+  const QImage &icon(IconSlot &s, const QUrl &src, qreal size, qreal dpr);
 
   void commit(const QString &t, int cur, bool user);
   void insertText(QString s);
@@ -242,10 +209,7 @@ private:
   void relayout();
   void setHovered(bool v);
   void updateCursorShape(int zone);
-
   void retarget(bool immediate = false);
-  void ensureDriver();
-  void tick(qreal dt);
 
   QString m_text;
   QString m_preedit;
@@ -258,9 +222,9 @@ private:
   QUrl m_leadingIconSource;
   QUrl m_trailingIconSource;
   QUrl m_clearIconSource;
-  IconCache m_leadingCache;
-  IconCache m_trailingCache;
-  IconCache m_clearCache;
+  IconSlot m_leading;
+  IconSlot m_trailing;
+  IconSlot m_clearSlot;
   bool m_showSearchIcon = true;
   bool m_clearable = true;
   bool m_readOnly = false;
@@ -284,13 +248,9 @@ private:
   QColor m_cursorColor = QColor("#6750A4");
   QColor m_selectionColor = QColor(103, 80, 164, 80);
 
-  qreal m_stiffness = 520.0;
-  qreal m_damping = 0.6;
-
   Spring m_hov;
   Spring m_foc;
   Spring m_clr;
 
   QTimer *m_blink = nullptr;
-  QAbstractAnimation *m_driver = nullptr;
 };

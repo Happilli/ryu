@@ -1,18 +1,15 @@
 #pragma once
+#include "../Core/ryuitem.hpp"
 #include <QColor>
 #include <QFont>
 #include <QKeyEvent>
 #include <QList>
 #include <QMouseEvent>
-#include <QQuickPaintedItem>
 #include <QRectF>
 #include <QStringList>
 #include <QVector>
-#include <QtQmlIntegration/qqmlintegration.h>
 
-class QAbstractAnimation;
-
-class MaterialButtonGroup : public QQuickPaintedItem {
+class MaterialButtonGroup : public MaterialItem {
   Q_OBJECT
   QML_ELEMENT
 
@@ -37,10 +34,6 @@ class MaterialButtonGroup : public QQuickPaintedItem {
   Q_PROPERTY(qreal spacing READ spacing WRITE setSpacing NOTIFY spacingChanged)
   Q_PROPERTY(
       bool fillWidth READ fillWidth WRITE setFillWidth NOTIFY fillWidthChanged)
-  Q_PROPERTY(qreal springStiffness READ springStiffness WRITE setSpringStiffness
-                 NOTIFY springStiffnessChanged)
-  Q_PROPERTY(qreal springDamping READ springDamping WRITE setSpringDamping
-                 NOTIFY springDampingChanged)
   Q_PROPERTY(qreal borderWidth READ borderWidth WRITE setBorderWidth NOTIFY
                  borderWidthChanged)
   Q_PROPERTY(QColor borderColor READ borderColor WRITE setBorderColor NOTIFY
@@ -77,8 +70,6 @@ public:
   }
   qreal spacing() const { return m_spacing; }
   bool fillWidth() const { return m_fillWidth; }
-  qreal springStiffness() const { return m_stiffness; }
-  qreal springDamping() const { return m_damping; }
   qreal borderWidth() const { return m_borderWidth; }
   QColor borderColor() const { return m_borderColor; }
   QColor color() const { return m_color; }
@@ -98,8 +89,6 @@ public:
   void setCurrentIndex(int i);
   void setSpacing(qreal v);
   void setFillWidth(bool v);
-  void setSpringStiffness(qreal v);
-  void setSpringDamping(qreal v);
   void setBorderWidth(qreal v);
   void setBorderColor(const QColor &v);
   void setColor(const QColor &v);
@@ -124,8 +113,6 @@ signals:
   void checkedIndicesChanged();
   void spacingChanged();
   void fillWidthChanged();
-  void springStiffnessChanged();
-  void springDampingChanged();
   void borderWidthChanged();
   void borderColorChanged();
   void colorChanged();
@@ -136,6 +123,7 @@ signals:
   void toggled(int index, bool checked);
 
 protected:
+  bool advance(qreal dt) override;
   void geometryChange(const QRectF &n, const QRectF &o) override;
   void mousePressEvent(QMouseEvent *e) override;
   void mouseReleaseEvent(QMouseEvent *e) override;
@@ -144,22 +132,6 @@ protected:
   void focusOutEvent(QFocusEvent *e) override;
 
 private:
-  struct Spring {
-    qreal x = 0.0;
-    qreal v = 0.0;
-    qreal t = 0.0;
-  };
-
-  template <typename T, typename Sig>
-  bool assign(T &field, const T &v, Sig sig) {
-    if (field == v)
-      return false;
-    field = v;
-    (this->*sig)();
-    update();
-    return true;
-  }
-
   int count() const { return qMax(m_labels.size(), m_icons.size()); }
   QFont labelFont() const;
   void ensureMetrics() const;
@@ -173,8 +145,6 @@ private:
   qreal targetRound(int i) const;
   qreal targetWidth(int i) const;
   void retarget(bool immediate = false);
-  void ensureDriver();
-  void tick(qreal dt);
   QVector<QRectF> displayRects() const;
 
   QStringList m_labels;
@@ -188,8 +158,6 @@ private:
   QList<int> m_checked;
   qreal m_spacing = -1.0;
   bool m_fillWidth = false;
-  qreal m_stiffness = 520.0;
-  qreal m_damping = 0.5;
   qreal m_borderWidth = 0.0;
   QColor m_borderColor = QColor("#79747E");
 
@@ -210,5 +178,4 @@ private:
 
   QVector<Spring> m_round;
   QVector<Spring> m_width;
-  QAbstractAnimation *m_driver = nullptr;
 };

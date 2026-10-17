@@ -1,5 +1,5 @@
 #include "./materialmenu.hpp"
-#include "../Shapes/springdriver.hpp"
+#include "../Core/paintutil.hpp"
 #include <QFontMetricsF>
 #include <QMetaObject>
 #include <QPainter>
@@ -19,81 +19,24 @@ constexpr qreal kFontPx = 14.0;
 constexpr qreal kShortPx = 12.0;
 constexpr qreal kSepH = 17.0;
 constexpr qreal kItemR = 12.0;
-constexpr qreal kDisabled = 0.38;
-constexpr qreal kMaxStep = 0.004;
-
-bool stepSpring(qreal &x, qreal &v, qreal t, qreal k, qreal z, qreal dt,
-                qreal eps) {
-  if (std::abs(x - t) < eps && std::abs(v) < eps * 10.0) {
-    x = t;
-    v = 0.0;
-    return false;
-  }
-  const qreal c = 2.0 * z * std::sqrt(k);
-  const int steps = std::max(1, int(std::ceil(dt / kMaxStep)));
-  const qreal h = dt / steps;
-  for (int i = 0; i < steps; ++i) {
-    const qreal acc = -k * (x - t) - c * v;
-    v += acc * h;
-    x += v * h;
-  }
-  return true;
-}
-
-void drawGlyph(QPainter *p, const QFont &font, const QString &text,
-               const QPointF &c, qreal size, const QColor &color) {
-  QFont f = font;
-  f.setPixelSize(qMax(1, qRound(size)));
-  f.setHintingPreference(QFont::PreferNoHinting);
-
-  QPainterPath gp;
-  gp.addText(QPointF(0.0, 0.0), f, text);
-  const QRectF br = gp.boundingRect();
-  if (br.isEmpty())
-    return;
-
-  const qreal k = std::min(1.0, size / std::max(br.width(), br.height()));
-  p->save();
-  p->translate(c);
-  p->scale(k, k);
-  p->translate(-br.center());
-  p->setPen(Qt::NoPen);
-  p->setBrush(color);
-  p->drawPath(gp);
-  p->restore();
-}
 } // namespace
 
-MaterialMenu::MaterialMenu(QQuickItem *parent) : QQuickPaintedItem(parent) {
-  setAntialiasing(true);
+MaterialMenu::MaterialMenu(QQuickItem *parent)
+    : MaterialItem(parent, 520.0, 0.6) {
   setAcceptedMouseButtons(Qt::LeftButton | Qt::RightButton);
   setAcceptHoverEvents(true);
   setTransformOrigin(TopLeft);
   setVisible(false);
-
-  auto *driver = new SpringDriver(this);
-  driver->tick = [this](qreal dt) { tick(dt); };
-  m_driver = driver;
-
   structureChanged();
   applyPop();
 }
 
 QFont MaterialMenu::labelFont() const {
-  QFont f = m_font;
-  f.setPixelSize(qRound(kFontPx));
-  f.setWeight(QFont::Weight(m_fontWeight));
-  f.setHintingPreference(QFont::PreferNoHinting);
-  f.setStyleStrategy(
-      QFont::StyleStrategy(QFont::PreferAntialias | QFont::PreferQuality));
-  return f;
+  return Ryu::styledFont(m_font, kFontPx, m_fontWeight);
 }
 
 QFont MaterialMenu::shortcutFont() const {
-  QFont f = labelFont();
-  f.setPixelSize(qRound(kShortPx));
-  f.setWeight(QFont::Normal);
-  return f;
+  return Ryu::styledFont(m_font, kShortPx, QFont::Normal);
 }
 
 void MaterialMenu::ensureMetrics() const {
@@ -224,12 +167,7 @@ void MaterialMenu::retarget() {
   } else {
     m_hlA.t = 0.0;
   }
-  ensureDriver();
-}
-
-void MaterialMenu::ensureDriver() {
-  if (m_driver->state() != QAbstractAnimation::Running)
-    m_driver->start();
+  animate();
 }
 
 void MaterialMenu::applyPop() {
@@ -238,25 +176,18 @@ void MaterialMenu::applyPop() {
   setOpacity(std::clamp(p * 1.6, 0.0, 1.0));
 }
 
-void MaterialMenu::tick(qreal dt) {
-  if (dt <= 0.0)
-    return;
-  const bool popActive =
-      stepSpring(m_pop.x, m_pop.v, m_pop.t, m_stiffness, m_damping, dt, 0.001);
+bool MaterialMenu::advance(qreal dt) {
+  const bool popActive = MaterialItem::step(m_pop, dt);
   bool active = popActive;
-  active |= stepSpring(m_hlY.x, m_hlY.v, m_hlY.t, m_stiffness * 1.2, m_damping,
-                       dt, 0.05);
-  active |= stepSpring(m_hlH.x, m_hlH.v, m_hlH.t, m_stiffness * 1.2, m_damping,
-                       dt, 0.05);
-  active |= stepSpring(m_hlA.x, m_hlA.v, m_hlA.t, m_stiffness, 1.0, dt, 0.001);
+  active |= MaterialItem::step(m_hlY, dt, 0.05, 1.2);
+  active |= MaterialItem::step(m_hlH, dt, 0.05, 1.2);
+  active |= Ryu::stepSpring(m_hlA, springStiffness(), 1.0, dt, 0.001);
 
   applyPop();
-  update();
 
   if (!m_open && !popActive)
     setVisible(false);
-  if (!active)
-    m_driver->stop();
+  return active;
 }
 
 void MaterialMenu::popup(qreal x, qreal y) {
@@ -304,7 +235,7 @@ void MaterialMenu::setOpen(bool v) {
   }
 
   m_pop.t = v ? 1.0 : 0.0;
-  ensureDriver();
+  animate();
   update();
   emit openChanged();
   if (v)
@@ -418,22 +349,6 @@ void MaterialMenu::setBorderColor(const QColor &v) {
   assign(m_borderColor, v, &MaterialMenu::borderColorChanged);
 }
 
-void MaterialMenu::setSpringStiffness(qreal v) {
-  v = std::max(1.0, v);
-  if (qFuzzyCompare(m_stiffness, v))
-    return;
-  m_stiffness = v;
-  emit springStiffnessChanged();
-}
-
-void MaterialMenu::setSpringDamping(qreal v) {
-  v = qBound(0.05, v, 2.0);
-  if (qFuzzyCompare(m_damping, v))
-    return;
-  m_damping = v;
-  emit springDampingChanged();
-}
-
 void MaterialMenu::geometryChange(const QRectF &n, const QRectF &o) {
   QQuickPaintedItem::geometryChange(n, o);
   if (n.size() != o.size())
@@ -540,10 +455,7 @@ void MaterialMenu::paint(QPainter *p) {
   if (w <= 0.0 || h <= 0.0)
     return;
 
-  p->setRenderHint(QPainter::Antialiasing, true);
-  p->setRenderHint(QPainter::TextAntialiasing, true);
-  if (!isEnabled())
-    p->setOpacity(kDisabled);
+  preparePainter(p);
 
   QPainterPath card;
   card.addRoundedRect(QRectF(0.0, 0.0, w, h), m_radius, m_radius);
@@ -552,23 +464,14 @@ void MaterialMenu::paint(QPainter *p) {
   p->setBrush(m_color);
   p->drawPath(card);
 
-  if (m_borderWidth > 0.0 && m_borderColor.alpha() > 0) {
-    p->save();
-    p->setClipPath(card);
-    p->setBrush(Qt::NoBrush);
-    p->setPen(QPen(m_borderColor, m_borderWidth * 2.0, Qt::SolidLine,
-                   Qt::FlatCap, Qt::RoundJoin));
-    p->drawPath(card);
-    p->restore();
-    p->setPen(Qt::NoPen);
-  }
+  if (m_borderWidth > 0.0 && m_borderColor.alpha() > 0)
+    Ryu::strokeInside(p, card, m_borderColor, m_borderWidth);
 
   const qreal a = std::clamp(m_hlA.x, 0.0, 1.0);
   if (a > 0.001 && !m_rects.isEmpty()) {
-    QColor l = m_hlBase;
     const bool pressed = m_pressIndex >= 0 && m_pressIndex == m_current;
-    l.setAlphaF((pressed ? 0.10 : 0.08) * a);
-    p->setBrush(l);
+    p->setBrush(Ryu::withAlpha(
+        m_hlBase, (pressed ? Ryu::kPressLayer : Ryu::kHoverLayer) * a));
     p->drawRoundedRect(
         QRectF(kPadH, m_hlY.x, w - 2.0 * kPadH, std::max(0.0, m_hlH.x)), kItemR,
         kItemR);
@@ -576,8 +479,6 @@ void MaterialMenu::paint(QPainter *p) {
 
   const QFont lf = labelFont();
   const QFont sf = shortcutFont();
-  const QFontMetricsF lm(lf);
-  const QFontMetricsF sm(sf);
   const qreal iconCol = m_hasIcon ? kIcon + kIconGap : 0.0;
 
   for (int i = 0; i < m_items.size(); ++i) {
@@ -602,35 +503,17 @@ void MaterialMenu::paint(QPainter *p) {
 
     p->save();
     if (!e.enabled)
-      p->setOpacity(p->opacity() * kDisabled);
+      p->setOpacity(p->opacity() * Ryu::kDisabledOpacity);
 
     qreal x = r.left() + kItemPad;
     if (!e.icon.isEmpty())
-      drawGlyph(p, m_iconFont, e.icon, QPointF(x + kIcon / 2.0, cy), kIcon, ic);
+      Ryu::drawGlyph(p, m_iconFont, e.icon, QPointF(x + kIcon / 2.0, cy), kIcon,
+                     ic);
     x += iconCol;
 
-    if (!e.label.isEmpty()) {
-      QPainterPath tp;
-      tp.addText(QPointF(0.0, 0.0), lf, e.label);
-      p->save();
-      p->translate(x, cy + (lm.ascent() - lm.descent()) / 2.0);
-      p->setPen(Qt::NoPen);
-      p->setBrush(fg);
-      p->drawPath(tp);
-      p->restore();
-    }
-
-    if (!e.shortcut.isEmpty()) {
-      QPainterPath sp;
-      sp.addText(QPointF(0.0, 0.0), sf, e.shortcut);
-      p->save();
-      p->translate(r.right() - kItemPad - m_shortW.value(i),
-                   cy + (sm.ascent() - sm.descent()) / 2.0);
-      p->setPen(Qt::NoPen);
-      p->setBrush(sc);
-      p->drawPath(sp);
-      p->restore();
-    }
+    Ryu::drawLabel(p, lf, e.label, x, cy, fg);
+    Ryu::drawLabel(p, sf, e.shortcut, r.right() - kItemPad - m_shortW.value(i),
+                   cy, sc);
 
     p->restore();
   }

@@ -1,15 +1,12 @@
 #pragma once
+#include "../Core/ryuitem.hpp"
 #include <QColor>
 #include <QFocusEvent>
 #include <QHoverEvent>
 #include <QKeyEvent>
 #include <QMouseEvent>
-#include <QQuickPaintedItem>
-#include <QtQmlIntegration/qqmlintegration.h>
 
-class QAbstractAnimation;
-
-class MaterialSwitch : public QQuickPaintedItem {
+class MaterialSwitch : public MaterialItem {
   Q_OBJECT
   QML_ELEMENT
 
@@ -34,11 +31,6 @@ class MaterialSwitch : public QQuickPaintedItem {
   Q_PROPERTY(QColor checkedIconColor READ checkedIconColor WRITE
                  setCheckedIconColor NOTIFY checkedIconColorChanged)
 
-  Q_PROPERTY(qreal springStiffness READ springStiffness WRITE setSpringStiffness
-                 NOTIFY springStiffnessChanged)
-  Q_PROPERTY(qreal springDamping READ springDamping WRITE setSpringDamping
-                 NOTIFY springDampingChanged)
-
 public:
   explicit MaterialSwitch(QQuickItem *parent = nullptr);
 
@@ -53,8 +45,6 @@ public:
   QColor borderColor() const { return m_borderColor; }
   QColor iconColor() const { return m_iconColor; }
   QColor checkedIconColor() const { return m_checkedIconColor; }
-  qreal springStiffness() const { return m_stiffness; }
-  qreal springDamping() const { return m_damping; }
 
   void setChecked(bool v);
   void setShowIcons(bool v);
@@ -65,8 +55,6 @@ public:
   void setBorderColor(const QColor &v);
   void setIconColor(const QColor &v);
   void setCheckedIconColor(const QColor &v);
-  void setSpringStiffness(qreal v);
-  void setSpringDamping(qreal v);
 
   void paint(QPainter *p) override;
 
@@ -82,12 +70,11 @@ signals:
   void borderColorChanged();
   void iconColorChanged();
   void checkedIconColorChanged();
-  void springStiffnessChanged();
-  void springDampingChanged();
-  void toggled(); // user changed the state
+  void toggled();
   void clicked();
 
 protected:
+  bool advance(qreal dt) override;
   void mousePressEvent(QMouseEvent *e) override;
   void mouseMoveEvent(QMouseEvent *e) override;
   void mouseReleaseEvent(QMouseEvent *e) override;
@@ -98,27 +85,9 @@ protected:
   void focusOutEvent(QFocusEvent *e) override;
 
 private:
-  struct Spring {
-    qreal x = 0.0;
-    qreal v = 0.0;
-    qreal t = 0.0;
-  };
-
-  template <typename T, typename Sig>
-  bool assign(T &field, const T &v, Sig sig) {
-    if (field == v)
-      return false;
-    field = v;
-    (this->*sig)();
-    update();
-    return true;
-  }
-
   void setPressed(bool v);
   void setHovered(bool v);
   void retarget(bool immediate = false);
-  void ensureDriver();
-  void tick(qreal dt);
   void userSet(bool on);
 
   bool m_checked = false;
@@ -137,10 +106,6 @@ private:
   QColor m_iconColor = QColor("#E6E0E9");
   QColor m_checkedIconColor = QColor("#6750A4");
 
-  qreal m_stiffness = 520.0;
-  qreal m_damping = 0.55;
-
   Spring m_pos;
   Spring m_press;
-  QAbstractAnimation *m_driver = nullptr;
 };

@@ -1,91 +1,31 @@
 #include "./materialsplitbutton.hpp"
-#include "../Shapes/springdriver.hpp"
+#include "../Core/paintutil.hpp"
+#include "../Core/sizes.hpp"
 #include <QFontMetricsF>
 #include <QPainter>
-#include <QPainterPath>
 #include <QPen>
 #include <algorithm>
-#include <cmath>
 
 namespace {
-constexpr qreal kHeight[] = {32.0, 40.0, 56.0, 96.0, 136.0};
-constexpr qreal kIconSize[] = {20.0, 24.0, 24.0, 32.0, 40.0};
-constexpr qreal kFontPx[] = {14.0, 14.0, 16.0, 24.0, 32.0};
 constexpr qreal kPadOuter[] = {12.0, 16.0, 24.0, 48.0, 64.0};
 constexpr qreal kPadInner[] = {10.0, 12.0, 24.0, 44.0, 60.0};
-constexpr qreal kIconGap[] = {4.0, 8.0, 8.0, 12.0, 16.0};
 constexpr qreal kTrailW[] = {32.0, 40.0, 56.0, 96.0, 136.0};
 constexpr qreal kChevron[] = {10.0, 12.0, 14.0, 20.0, 26.0};
 constexpr qreal kInnerR[] = {6.0, 8.0, 8.0, 12.0, 16.0};
 constexpr qreal kSegGap = 2.0;
-constexpr qreal kMaxStep = 0.004;
-
-QPainterPath sidedRect(const QRectF &r, qreal rl, qreal rr) {
-  const qreal maxR = std::min(r.height(), r.width()) / 2.0;
-  rl = std::clamp(rl, 0.0, maxR);
-  rr = std::clamp(rr, 0.0, maxR);
-  const qreal x0 = r.left(), x1 = r.right(), t = r.top(), b = r.bottom();
-
-  QPainterPath p;
-  p.moveTo(x0 + rl, t);
-  p.lineTo(x1 - rr, t);
-  if (rr > 0.0)
-    p.arcTo(x1 - 2 * rr, t, 2 * rr, 2 * rr, 90, -90);
-  p.lineTo(x1, b - rr);
-  if (rr > 0.0)
-    p.arcTo(x1 - 2 * rr, b - 2 * rr, 2 * rr, 2 * rr, 0, -90);
-  p.lineTo(x0 + rl, b);
-  if (rl > 0.0)
-    p.arcTo(x0, b - 2 * rl, 2 * rl, 2 * rl, 270, -90);
-  p.lineTo(x0, t + rl);
-  if (rl > 0.0)
-    p.arcTo(x0, t, 2 * rl, 2 * rl, 180, -90);
-  p.closeSubpath();
-  return p;
-}
-
-bool stepSpring(qreal &x, qreal &v, qreal t, qreal k, qreal z, qreal dt,
-                qreal eps) {
-  if (std::abs(x - t) < eps && std::abs(v) < eps * 10.0) {
-    x = t;
-    v = 0.0;
-    return false;
-  }
-  const qreal c = 2.0 * z * std::sqrt(k);
-  const int steps = std::max(1, int(std::ceil(dt / kMaxStep)));
-  const qreal h = dt / steps;
-  for (int i = 0; i < steps; ++i) {
-    const qreal acc = -k * (x - t) - c * v;
-    v += acc * h;
-    x += v * h;
-  }
-  return true;
-}
 } // namespace
 
 MaterialSplitButton::MaterialSplitButton(QQuickItem *parent)
-    : QQuickPaintedItem(parent) {
-  setAntialiasing(true);
+    : MaterialItem(parent, 520.0, 0.5) {
   setAcceptedMouseButtons(Qt::LeftButton);
   setAcceptHoverEvents(true);
   setActiveFocusOnTab(true);
-
-  auto *driver = new SpringDriver(this);
-  driver->tick = [this](qreal dt) { tick(dt); };
-  m_driver = driver;
-
   updateImplicit();
   retarget(true);
 }
 
 QFont MaterialSplitButton::labelFont() const {
-  QFont f = m_font;
-  f.setPixelSize(qRound(kFontPx[m_sizeStyle]));
-  f.setWeight(QFont::Weight(m_fontWeight));
-  f.setHintingPreference(QFont::PreferNoHinting);
-  f.setStyleStrategy(
-      QFont::StyleStrategy(QFont::PreferAntialias | QFont::PreferQuality));
-  return f;
+  return Ryu::styledFont(m_font, Ryu::kBtnFont[m_sizeStyle], m_fontWeight);
 }
 
 qreal MaterialSplitButton::textWidth() const {
@@ -100,9 +40,9 @@ qreal MaterialSplitButton::leadWidth() const {
   const qreal tw = textWidth();
   qreal w = kPadOuter[s] + kPadInner[s] + tw;
   if (hasIcon)
-    w += kIconSize[s];
+    w += Ryu::kBtnIcon[s];
   if (hasIcon && tw > 0.0)
-    w += kIconGap[s];
+    w += Ryu::kBtnIconGap[s];
   return w;
 }
 
@@ -140,11 +80,11 @@ QColor MaterialSplitButton::foregroundColor() const {
 
 void MaterialSplitButton::updateImplicit() {
   setImplicitWidth(leadWidth() + kSegGap + kTrailW[m_sizeStyle]);
-  setImplicitHeight(kHeight[m_sizeStyle]);
+  setImplicitHeight(Ryu::kBtnHeight[m_sizeStyle]);
 }
 
 int MaterialSplitButton::hit(const QPointF &pt) const {
-  const qreal h = kHeight[m_sizeStyle];
+  const qreal h = Ryu::kBtnHeight[m_sizeStyle];
   const qreal y = (height() - h) / 2.0;
   if (pt.y() < y || pt.y() > y + h)
     return None;
@@ -156,37 +96,18 @@ int MaterialSplitButton::hit(const QPointF &pt) const {
 }
 
 void MaterialSplitButton::retarget(bool immediate) {
-  m_roundLead.t = m_pressZone == Lead ? 1.0 : 0.0;
-  m_roundTrail.t = (m_pressZone == Trail || m_menuOpen) ? 1.0 : 0.0;
-  m_chev.t = m_menuOpen ? 1.0 : 0.0;
-  if (immediate) {
-    for (Spring *s : {&m_roundLead, &m_roundTrail, &m_chev}) {
-      s->x = s->t;
-      s->v = 0.0;
-    }
-    return;
-  }
-  ensureDriver();
+  m_roundLead.go(m_pressZone == Lead ? 1.0 : 0.0, immediate);
+  m_roundTrail.go((m_pressZone == Trail || m_menuOpen) ? 1.0 : 0.0, immediate);
+  m_chev.go(m_menuOpen ? 1.0 : 0.0, immediate);
+  if (!immediate)
+    animate();
 }
 
-void MaterialSplitButton::ensureDriver() {
-  if (m_driver->state() != QAbstractAnimation::Running)
-    m_driver->start();
-}
-
-void MaterialSplitButton::tick(qreal dt) {
-  if (dt <= 0.0)
-    return;
-  bool active = false;
-  active |= stepSpring(m_roundLead.x, m_roundLead.v, m_roundLead.t, m_stiffness,
-                       m_damping, dt, 0.001);
-  active |= stepSpring(m_roundTrail.x, m_roundTrail.v, m_roundTrail.t,
-                       m_stiffness, m_damping, dt, 0.001);
-  active |= stepSpring(m_chev.x, m_chev.v, m_chev.t, m_stiffness * 0.8,
-                       m_damping, dt, 0.001);
-  update();
-  if (!active)
-    m_driver->stop();
+bool MaterialSplitButton::advance(qreal dt) {
+  bool active = step(m_roundLead, dt);
+  active |= step(m_roundTrail, dt);
+  active |= step(m_chev, dt, 0.001, 0.8);
+  return active;
 }
 
 void MaterialSplitButton::setLabel(const QString &v) {
@@ -247,22 +168,6 @@ void MaterialSplitButton::setBorderColor(const QColor &v) {
 void MaterialSplitButton::setBorderWidth(qreal v) {
   assign(m_borderWidth, std::max(0.0, v),
          &MaterialSplitButton::borderWidthChanged);
-}
-
-void MaterialSplitButton::setSpringStiffness(qreal v) {
-  v = std::max(1.0, v);
-  if (qFuzzyCompare(m_stiffness, v))
-    return;
-  m_stiffness = v;
-  emit springStiffnessChanged();
-}
-
-void MaterialSplitButton::setSpringDamping(qreal v) {
-  v = qBound(0.05, v, 2.0);
-  if (qFuzzyCompare(m_damping, v))
-    return;
-  m_damping = v;
-  emit springDampingChanged();
 }
 
 void MaterialSplitButton::setPressZone(int z) {
@@ -371,13 +276,10 @@ void MaterialSplitButton::focusOutEvent(QFocusEvent *e) {
 }
 
 void MaterialSplitButton::paint(QPainter *p) {
-  p->setRenderHint(QPainter::Antialiasing, true);
-  p->setRenderHint(QPainter::TextAntialiasing, true);
-  if (!isEnabled())
-    p->setOpacity(0.38);
+  preparePainter(p);
 
   const int s = m_sizeStyle;
-  const qreal h = kHeight[s];
+  const qreal h = Ryu::kBtnHeight[s];
   const qreal full = h / 2.0;
   const qreal inner = kInnerR[s];
   const qreal y = (height() - h) / 2.0;
@@ -391,9 +293,9 @@ void MaterialSplitButton::paint(QPainter *p) {
   const qreal tT = std::clamp(m_roundTrail.x, 0.0, 1.0);
 
   const QPainterPath leadPath =
-      sidedRect(leadRect, full, inner + (full - inner) * tL);
+      Ryu::sidedRect(leadRect, full, inner + (full - inner) * tL);
   const QPainterPath trailPath =
-      sidedRect(trailRect, inner + (full - inner) * tT, full);
+      Ryu::sidedRect(trailRect, inner + (full - inner) * tT, full);
 
   const QColor bg = containerColor();
   const QColor fg = foregroundColor();
@@ -405,27 +307,15 @@ void MaterialSplitButton::paint(QPainter *p) {
       p->drawPath(path);
     }
 
-    if (m_type == Outlined && m_borderWidth > 0.0 &&
-        m_borderColor.alpha() > 0) {
-      p->save();
-      p->setClipPath(path);
-      p->setBrush(Qt::NoBrush);
-      p->setPen(QPen(m_borderColor, m_borderWidth * 2.0, Qt::SolidLine,
-                     Qt::FlatCap, Qt::RoundJoin));
-      p->drawPath(path);
-      p->restore();
-      p->setPen(Qt::NoPen);
-    }
+    if (m_type == Outlined && m_borderWidth > 0.0 && m_borderColor.alpha() > 0)
+      Ryu::strokeInside(p, path, m_borderColor, m_borderWidth);
 
-    qreal layer = 0.0;
-    if (m_hoverZone == zone)
-      layer = 0.08;
-    if (m_pressZone == zone || (m_keyFocus && hasActiveFocus() && zone == Lead))
-      layer = 0.10;
+    const qreal layer =
+        Ryu::stateLayer(m_hoverZone == zone,
+                        m_pressZone == zone ||
+                            (m_keyFocus && hasActiveFocus() && zone == Lead));
     if (layer > 0.0) {
-      QColor l = fg;
-      l.setAlphaF(layer);
-      p->setBrush(l);
+      p->setBrush(Ryu::withAlpha(fg, layer));
       p->drawPath(path);
     }
   };
@@ -433,46 +323,19 @@ void MaterialSplitButton::paint(QPainter *p) {
   drawSegment(leadPath, Lead);
   drawSegment(trailPath, Trail);
 
-  const qreal iconSz = kIconSize[s];
-  const bool hasIcon = !m_iconText.isEmpty();
+  const qreal iconSz = Ryu::kBtnIcon[s];
+  const qreal cy = leadRect.center().y();
   qreal x = leadRect.left() + kPadOuter[s];
 
-  if (hasIcon) {
-    QFont f = m_iconFont;
-    f.setPixelSize(qRound(iconSz));
-    f.setHintingPreference(QFont::PreferNoHinting);
-
-    QPainterPath gp;
-    gp.addText(QPointF(0.0, 0.0), f, m_iconText);
-    const QRectF br = gp.boundingRect();
-    if (!br.isEmpty()) {
-      const qreal k = std::min(1.0, iconSz / std::max(br.width(), br.height()));
-      p->save();
-      p->translate(x + iconSz / 2.0, leadRect.center().y());
-      p->scale(k, k);
-      p->translate(-br.center());
-      p->setPen(Qt::NoPen);
-      p->setBrush(fg);
-      p->drawPath(gp);
-      p->restore();
-    }
+  if (!m_iconText.isEmpty()) {
+    Ryu::drawGlyph(p, m_iconFont, m_iconText, QPointF(x + iconSz / 2.0, cy),
+                   iconSz, fg);
     x += iconSz;
     if (!m_label.isEmpty())
-      x += kIconGap[s];
+      x += Ryu::kBtnIconGap[s];
   }
 
-  if (!m_label.isEmpty()) {
-    const QFont lf = labelFont();
-    const QFontMetricsF fm(lf);
-    QPainterPath tp;
-    tp.addText(QPointF(0.0, 0.0), lf, m_label);
-    p->save();
-    p->translate(x, leadRect.center().y() + (fm.ascent() - fm.descent()) / 2.0);
-    p->setPen(Qt::NoPen);
-    p->setBrush(fg);
-    p->drawPath(tp);
-    p->restore();
-  }
+  Ryu::drawLabel(p, labelFont(), m_label, x, cy, fg);
 
   const qreal cw = kChevron[s] / 2.0;
   p->save();

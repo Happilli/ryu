@@ -1,4 +1,5 @@
 #pragma once
+#include "../Core/spring.hpp"
 #include "./materialshapeborder.hpp"
 #include "./morph.hpp"
 #include <QColor>
@@ -11,8 +12,6 @@
 #include <QTimer>
 #include <QUrl>
 #include <QtQmlIntegration/qqmlintegration.h>
-
-class QAbstractAnimation;
 
 class MaterialShape : public QQuickPaintedItem {
   Q_OBJECT
@@ -172,7 +171,6 @@ protected:
   void itemChange(ItemChange change, const ItemChangeData &data) override;
 
 private:
-  QString resolveSourcePath(const QUrl &u) const;
   void rebuildPath();
   void buildImage();
   void snapTo(Type t);
@@ -209,17 +207,13 @@ private:
   int m_loadIndex = 0;
   QTimer *m_loadTimer = nullptr;
 
-  qreal m_rot = 0.0;
-  qreal m_rotTarget = 0.0;
-  qreal m_rotVel = 0.0;
-
-  qreal m_progress = 0.0;
-  qreal m_velocity = 0.0;
+  Ryu::Spring m_rot;
+  Ryu::Spring m_morph{0.0, 0.0, 1.0};
 
   Cubics m_current;
   Cubics m_from;
   Cubics m_to;
-  QAbstractAnimation *m_driver = nullptr;
+  Ryu::SpringDriver *m_driver = nullptr;
 
   QPainterPath m_path;
   bool m_pathDirty = true;

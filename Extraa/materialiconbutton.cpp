@@ -1,55 +1,25 @@
-#include "../Shapes/springdriver.hpp"
 #include "./materialiconbutton.hpp"
-#include <QImageReader>
+#include "../Core/sizes.hpp"
 #include <QPainter>
 #include <QPainterPath>
 #include <QPen>
-#include <QQmlFile>
+#include <QQmlEngine>
 #include <QQuickWindow>
 #include <algorithm>
-#include <cmath>
 
 namespace {
-constexpr qreal kHeight[] = {32.0, 40.0, 56.0, 96.0, 136.0};
 constexpr qreal kWidth[3][5] = {{32.0, 40.0, 56.0, 96.0, 136.0},
                                 {28.0, 32.0, 48.0, 64.0, 104.0},
                                 {40.0, 52.0, 72.0, 128.0, 184.0}};
-constexpr qreal kIconSz[] = {20.0, 24.0, 24.0, 32.0, 40.0};
-constexpr qreal kSquareR[] = {12.0, 12.0, 16.0, 28.0, 28.0};
 constexpr qreal kBorder[] = {1.0, 1.0, 1.0, 2.0, 3.0};
 constexpr qreal kPressShrink = 0.06;
-constexpr qreal kMaxStep = 0.004;
-
-bool stepSpring(qreal &x, qreal &v, qreal t, qreal k, qreal z, qreal dt,
-                qreal eps) {
-  if (std::abs(x - t) < eps && std::abs(v) < eps * 10.0) {
-    x = t;
-    v = 0.0;
-    return false;
-  }
-  const qreal c = 2.0 * z * std::sqrt(k);
-  const int steps = std::max(1, int(std::ceil(dt / kMaxStep)));
-  const qreal h = dt / steps;
-  for (int i = 0; i < steps; ++i) {
-    const qreal acc = -k * (x - t) - c * v;
-    v += acc * h;
-    x += v * h;
-  }
-  return true;
-}
 } // namespace
 
 MaterialIconButton::MaterialIconButton(QQuickItem *parent)
-    : QQuickPaintedItem(parent) {
-  setAntialiasing(true);
+    : MaterialItem(parent, 520.0, 0.5) {
   setAcceptedMouseButtons(Qt::LeftButton);
   setAcceptHoverEvents(true);
   setActiveFocusOnTab(true);
-
-  auto *driver = new SpringDriver(this);
-  driver->tick = [this](qreal dt) { tick(dt); };
-  m_driver = driver;
-
   updateImplicit();
   retarget(true);
 }
@@ -90,10 +60,8 @@ QColor MaterialIconButton::contentColor() const {
   return QColor("#49454F");
 }
 
-QColor MaterialIconButton::outlineColor() const { return m_borderColor; }
-
 qreal MaterialIconButton::resolvedIconSize() const {
-  return m_iconSize >= 0.0 ? m_iconSize : kIconSz[m_sizeStyle];
+  return m_iconSize >= 0.0 ? m_iconSize : Ryu::kBtnIcon[m_sizeStyle];
 }
 
 qreal MaterialIconButton::resolvedBorderWidth() const {
@@ -111,43 +79,24 @@ qreal MaterialIconButton::targetRound() const {
 
 void MaterialIconButton::updateImplicit() {
   setImplicitWidth(kWidth[m_widthStyle][m_sizeStyle]);
-  setImplicitHeight(kHeight[m_sizeStyle]);
+  setImplicitHeight(Ryu::kBtnHeight[m_sizeStyle]);
 }
 
 void MaterialIconButton::retarget(bool immediate) {
-  m_round.t = targetRound();
-  m_press.t = m_pressed ? 1.0 : 0.0;
-  if (immediate) {
-    m_round.x = m_round.t;
-    m_round.v = 0.0;
-    m_press.x = m_press.t;
-    m_press.v = 0.0;
-    return;
-  }
-  ensureDriver();
+  m_round.go(targetRound(), immediate);
+  m_press.go(m_pressed ? 1.0 : 0.0, immediate);
+  if (!immediate)
+    animate();
 }
 
-void MaterialIconButton::ensureDriver() {
-  if (m_driver->state() != QAbstractAnimation::Running)
-    m_driver->start();
-}
-
-void MaterialIconButton::tick(qreal dt) {
-  if (dt <= 0.0)
-    return;
-  bool active = false;
-  active |= stepSpring(m_round.x, m_round.v, m_round.t, m_stiffness, m_damping,
-                       dt, 0.001);
-  active |= stepSpring(m_press.x, m_press.v, m_press.t, m_stiffness * 1.4,
-                       m_damping, dt, 0.001);
-  update();
-  if (!active)
-    m_driver->stop();
+bool MaterialIconButton::advance(qreal dt) {
+  bool active = step(m_round, dt);
+  active |= step(m_press, dt, 0.001, 1.4);
+  return active;
 }
 
 void MaterialIconButton::setType(Type v) {
   assign(m_type, v, &MaterialIconButton::typeChanged);
-  m_iconDirty = true;
 }
 
 void MaterialIconButton::setSizeStyle(SizeStyle v) {
@@ -177,7 +126,7 @@ void MaterialIconButton::setChecked(bool v) {
 
 void MaterialIconButton::setIconSource(const QUrl &v) {
   if (assign(m_iconSource, v, &MaterialIconButton::iconSourceChanged))
-    m_iconDirty = true;
+    m_iconPath.clear();
 }
 
 void MaterialIconButton::setIconText(const QString &v) {
@@ -191,8 +140,7 @@ void MaterialIconButton::setIconFont(const QFont &v) {
 void MaterialIconButton::setIconSize(qreal v) {
   if (v < 0.0)
     v = -1.0;
-  if (assign(m_iconSize, v, &MaterialIconButton::iconSizeChanged))
-    m_iconDirty = true;
+  assign(m_iconSize, v, &MaterialIconButton::iconSizeChanged);
 }
 
 void MaterialIconButton::setColor(const QColor &v) {
@@ -219,22 +167,6 @@ void MaterialIconButton::setBorderWidth(qreal v) {
   if (v < 0.0)
     v = -1.0;
   assign(m_borderWidth, v, &MaterialIconButton::borderWidthChanged);
-}
-
-void MaterialIconButton::setSpringStiffness(qreal v) {
-  v = std::max(1.0, v);
-  if (qFuzzyCompare(m_stiffness, v))
-    return;
-  m_stiffness = v;
-  emit springStiffnessChanged();
-}
-
-void MaterialIconButton::setSpringDamping(qreal v) {
-  v = qBound(0.05, v, 2.0);
-  if (qFuzzyCompare(m_damping, v))
-    return;
-  m_damping = v;
-  emit springDampingChanged();
 }
 
 void MaterialIconButton::setPressed(bool v) {
@@ -326,56 +258,12 @@ void MaterialIconButton::focusOutEvent(QFocusEvent *e) {
   update();
 }
 
-void MaterialIconButton::buildIcon(qreal dpr, const QColor &c) {
-  const qreal sz = resolvedIconSize();
-  const int px = qRound(sz * dpr);
-  if (!m_iconDirty && px == m_iconPx && c == m_iconBuiltColor)
-    return;
-  m_iconDirty = false;
-  m_iconPx = px;
-  m_iconBuiltColor = c;
-  m_icon = QImage();
-  if (px <= 0 || !m_iconSource.isValid() || m_iconSource.isEmpty())
-    return;
-
-  const QString path = QQmlFile::urlToLocalFileOrQrc(m_iconSource);
-  QImageReader r(path);
-  QSize s = r.size();
-  if (s.isValid()) {
-    s.scale(px, px, Qt::KeepAspectRatio);
-    r.setScaledSize(s);
-  }
-  const QImage src = r.read();
-  if (src.isNull()) {
-    qWarning("MaterialIconButton: failed to load icon '%s'", qPrintable(path));
-    return;
-  }
-
-  QImage out(px, px, QImage::Format_ARGB32_Premultiplied);
-  out.fill(Qt::transparent);
-  QPainter q(&out);
-  q.setRenderHint(QPainter::SmoothPixmapTransform, true);
-  QSize d = src.size();
-  d.scale(px, px, Qt::KeepAspectRatio);
-  q.drawImage(
-      QRect((px - d.width()) / 2, (px - d.height()) / 2, d.width(), d.height()),
-      src);
-  q.setCompositionMode(QPainter::CompositionMode_SourceIn);
-  q.fillRect(out.rect(), c);
-  q.end();
-  out.setDevicePixelRatio(dpr);
-  m_icon = std::move(out);
-}
-
 void MaterialIconButton::paint(QPainter *p) {
   const qreal w = width(), h = height();
   if (w <= 0.0 || h <= 0.0)
     return;
 
-  p->setRenderHint(QPainter::Antialiasing, true);
-  p->setRenderHint(QPainter::TextAntialiasing, true);
-  if (!isEnabled())
-    p->setOpacity(0.38);
+  preparePainter(p);
 
   const qreal scale = 1.0 - kPressShrink * m_press.x;
   p->translate(w / 2.0, h / 2.0);
@@ -383,7 +271,7 @@ void MaterialIconButton::paint(QPainter *p) {
   p->translate(-w / 2.0, -h / 2.0);
 
   const qreal full = std::min(w, h) / 2.0;
-  const qreal sq = std::min(kSquareR[m_sizeStyle], full);
+  const qreal sq = std::min(Ryu::kBtnSquareR[m_sizeStyle], full);
   const qreal radius = std::max(0.0, sq + (full - sq) * m_round.x);
   const QRectF rect(0.0, 0.0, w, h);
 
@@ -401,24 +289,19 @@ void MaterialIconButton::paint(QPainter *p) {
 
   const qreal bw = resolvedBorderWidth();
   if (m_type == Outlined && !m_checked && bw > 0.0 &&
-      outlineColor().alpha() > 0) {
+      m_borderColor.alpha() > 0) {
     const qreal half = bw / 2.0;
     const qreal br = std::max(0.0, radius - half);
     p->setBrush(Qt::NoBrush);
-    p->setPen(QPen(outlineColor(), bw));
+    p->setPen(QPen(m_borderColor, bw));
     p->drawRoundedRect(rect.adjusted(half, half, -half, -half), br, br);
     p->setPen(Qt::NoPen);
   }
 
-  qreal layer = 0.0;
-  if (m_hovered)
-    layer = 0.08;
-  if (m_pressed || (m_keyFocus && hasActiveFocus()))
-    layer = 0.10;
+  const qreal layer =
+      Ryu::stateLayer(m_hovered, m_pressed || (m_keyFocus && hasActiveFocus()));
   if (layer > 0.0) {
-    QColor l = fg;
-    l.setAlphaF(layer);
-    p->setBrush(l);
+    p->setBrush(Ryu::withAlpha(fg, layer));
     p->drawPath(path);
   }
 
@@ -427,30 +310,16 @@ void MaterialIconButton::paint(QPainter *p) {
     return;
 
   if (m_iconSource.isValid() && !m_iconSource.isEmpty()) {
-    buildIcon(window() ? window()->devicePixelRatio() : 1.0, fg);
-    if (!m_icon.isNull())
+    if (m_iconPath.isEmpty())
+      m_iconPath = Ryu::resolveUrl(qmlContext(this), m_iconSource);
+    const QImage &img = m_iconCache.get(
+        m_iconPath, iconSz, window() ? window()->devicePixelRatio() : 1.0, fg);
+    if (!img.isNull())
       p->drawImage(QPointF(w / 2.0 - iconSz / 2.0, h / 2.0 - iconSz / 2.0),
-                   m_icon);
+                   img);
   }
 
-  if (!m_iconText.isEmpty()) {
-    QFont f = m_iconFont;
-    f.setPixelSize(qMax(1, qRound(iconSz)));
-    f.setHintingPreference(QFont::PreferNoHinting);
-
-    QPainterPath gp;
-    gp.addText(QPointF(0.0, 0.0), f, m_iconText);
-    const QRectF br = gp.boundingRect();
-    if (!br.isEmpty()) {
-      const qreal k = std::min(1.0, iconSz / std::max(br.width(), br.height()));
-      p->save();
-      p->translate(w / 2.0, h / 2.0);
-      p->scale(k, k);
-      p->translate(-br.center());
-      p->setPen(Qt::NoPen);
-      p->setBrush(fg);
-      p->drawPath(gp);
-      p->restore();
-    }
-  }
+  if (!m_iconText.isEmpty())
+    Ryu::drawGlyph(p, m_iconFont, m_iconText, QPointF(w / 2.0, h / 2.0), iconSz,
+                   fg);
 }

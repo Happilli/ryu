@@ -1,12 +1,11 @@
 #pragma once
+#include "../Core/ryuitem.hpp"
 #include <QColor>
 #include <QElapsedTimer>
 #include <QMetaObject>
-#include <QQuickPaintedItem>
 #include <QQuickWindow>
-#include <QtQmlIntegration/qqmlintegration.h>
 
-class WavyProgress : public QQuickPaintedItem {
+class WavyProgress : public RyuItem {
   Q_OBJECT
   QML_ELEMENT
 
@@ -73,18 +72,9 @@ signals:
 protected:
   void componentComplete() override;
   void itemChange(ItemChange change, const ItemChangeData &data) override;
+  void propertyAssigned() override;
 
 private:
-  template <typename T, typename Sig>
-  void assign(T &field, const T &v, Sig sig) {
-    if (field == v)
-      return;
-    field = v;
-    (this->*sig)();
-    syncFrames(window());
-    update();
-  }
-
   void syncFrames(QQuickWindow *w);
   void onFrame();
   void segment(qreal &a, qreal &b) const;

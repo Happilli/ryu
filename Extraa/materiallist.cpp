@@ -1,14 +1,12 @@
 #include "./materiallist.hpp"
-#include "../Shapes/springdriver.hpp"
-#include <QDir>
+#include "../Core/paintutil.hpp"
 #include <QFontMetricsF>
 #include <QImageReader>
 #include <QMetaObject>
 #include <QPainter>
 #include <QPainterPath>
 #include <QPen>
-#include <QQmlFile>
-#include <QUrl>
+#include <QQmlEngine>
 #include <algorithm>
 #include <cmath>
 
@@ -28,100 +26,8 @@ constexpr qreal kDivider = 1.0;
 constexpr qreal kOverlineLh = 16.0;
 constexpr qreal kHeadlineLh = 24.0;
 constexpr qreal kSupportLh = 20.0;
-constexpr qreal kDisabled = 0.38;
-constexpr qreal kMaxStep = 0.004;
 
-QPainterPath cornerRect(const QRectF &r, qreal tl, qreal tr, qreal br,
-                        qreal bl) {
-  const qreal maxR = std::min(r.height(), r.width()) / 2.0;
-  tl = std::clamp(tl, 0.0, maxR);
-  tr = std::clamp(tr, 0.0, maxR);
-  br = std::clamp(br, 0.0, maxR);
-  bl = std::clamp(bl, 0.0, maxR);
-  const qreal x0 = r.left(), x1 = r.right(), t = r.top(), b = r.bottom();
-
-  QPainterPath p;
-  p.moveTo(x0 + tl, t);
-  p.lineTo(x1 - tr, t);
-  if (tr > 0.0)
-    p.arcTo(x1 - 2 * tr, t, 2 * tr, 2 * tr, 90, -90);
-  p.lineTo(x1, b - br);
-  if (br > 0.0)
-    p.arcTo(x1 - 2 * br, b - 2 * br, 2 * br, 2 * br, 0, -90);
-  p.lineTo(x0 + bl, b);
-  if (bl > 0.0)
-    p.arcTo(x0, b - 2 * bl, 2 * bl, 2 * bl, 270, -90);
-  p.lineTo(x0, t + tl);
-  if (tl > 0.0)
-    p.arcTo(x0, t, 2 * tl, 2 * tl, 180, -90);
-  p.closeSubpath();
-  return p;
-}
-
-bool stepSpring(qreal &x, qreal &v, qreal t, qreal k, qreal z, qreal dt,
-                qreal eps) {
-  if (std::abs(x - t) < eps && std::abs(v) < eps * 10.0) {
-    x = t;
-    v = 0.0;
-    return false;
-  }
-  const qreal c = 2.0 * z * std::sqrt(k);
-  const int steps = std::max(1, int(std::ceil(dt / kMaxStep)));
-  const qreal h = dt / steps;
-  for (int i = 0; i < steps; ++i) {
-    const qreal acc = -k * (x - t) - c * v;
-    v += acc * h;
-    x += v * h;
-  }
-  return true;
-}
-
-void drawGlyph(QPainter *p, const QFont &font, const QString &text,
-               const QPointF &c, qreal size, const QColor &color) {
-  QFont f = font;
-  f.setPixelSize(qMax(1, qRound(size)));
-  f.setHintingPreference(QFont::PreferNoHinting);
-
-  QPainterPath gp;
-  gp.addText(QPointF(0.0, 0.0), f, text);
-  const QRectF br = gp.boundingRect();
-  if (br.isEmpty())
-    return;
-
-  const qreal k = std::min(1.0, size / std::max(br.width(), br.height()));
-  p->save();
-  p->translate(c);
-  p->scale(k, k);
-  p->translate(-br.center());
-  p->setPen(Qt::NoPen);
-  p->setBrush(color);
-  p->drawPath(gp);
-  p->restore();
-}
-
-void drawText(QPainter *p, const QFont &f, const QString &s, qreal x, qreal cy,
-              const QColor &c) {
-  if (s.isEmpty())
-    return;
-  const QFontMetricsF fm(f);
-  QPainterPath tp;
-  tp.addText(QPointF(0.0, 0.0), f, s);
-  p->save();
-  p->translate(x, cy + (fm.ascent() - fm.descent()) / 2.0);
-  p->setPen(Qt::NoPen);
-  p->setBrush(c);
-  p->drawPath(tp);
-  p->restore();
-}
-
-QImage loadSquare(const QString &src) {
-  QString path = src;
-  const QUrl u(src);
-  if (u.isLocalFile() || u.scheme().compare("qrc", Qt::CaseInsensitive) == 0)
-    path = QQmlFile::urlToLocalFileOrQrc(u);
-  else if (path.startsWith(QLatin1String("~/")))
-    path = QDir::homePath() + path.mid(1);
-
+QImage loadSquare(const QString &path) {
   QImageReader r(path);
   const QImage in = r.read();
   if (in.isNull()) {
@@ -136,28 +42,13 @@ QImage loadSquare(const QString &src) {
 }
 } // namespace
 
-MaterialList::MaterialList(QQuickItem *parent) : QQuickPaintedItem(parent) {
-  setAntialiasing(true);
+MaterialList::MaterialList(QQuickItem *parent)
+    : MaterialItem(parent, 520.0, 0.6) {
   setAcceptedMouseButtons(Qt::LeftButton);
   setAcceptHoverEvents(true);
   setActiveFocusOnTab(true);
   setImplicitWidth(360.0);
-
-  auto *driver = new SpringDriver(this);
-  driver->tick = [this](qreal dt) { tick(dt); };
-  m_driver = driver;
-
   structureChanged();
-}
-
-QFont MaterialList::textFont(qreal px, int weight) const {
-  QFont f = m_font;
-  f.setPixelSize(qRound(px));
-  f.setWeight(QFont::Weight(weight));
-  f.setHintingPreference(QFont::PreferNoHinting);
-  f.setStyleStrategy(
-      QFont::StyleStrategy(QFont::PreferAntialias | QFont::PreferQuality));
-  return f;
 }
 
 QColor MaterialList::resolvedItemColor() const {
@@ -235,22 +126,11 @@ int MaterialList::step(int from, int dir) const {
   return from;
 }
 
-void MaterialList::ensureDriver() {
-  if (m_driver->state() != QAbstractAnimation::Running)
-    m_driver->start();
-}
-
-void MaterialList::tick(qreal dt) {
-  if (dt <= 0.0)
-    return;
-  const bool active = stepSpring(m_press.x, m_press.v, m_press.t, m_stiffness,
-                                 m_damping, dt, 0.001);
-  update();
-  if (!active) {
-    if (m_press.t == 0.0)
-      m_pressShown = -1;
-    m_driver->stop();
-  }
+bool MaterialList::advance(qreal dt) {
+  const bool active = MaterialItem::step(m_press, dt);
+  if (!active && m_press.t == 0.0)
+    m_pressShown = -1;
+  return active;
 }
 
 void MaterialList::setModel(const QVariantList &v) {
@@ -279,7 +159,7 @@ void MaterialList::setModel(const QVariantList &v) {
       e.enabled = m.contains("enabled") ? m.value("enabled").toBool() : true;
       const QString img = m.value("image").toString();
       if (!img.isEmpty())
-        e.image = loadSquare(img);
+        e.image = loadSquare(Ryu::resolveUrl(qmlContext(this), QUrl(img)));
     }
     m_items.append(e);
   }
@@ -370,22 +250,6 @@ void MaterialList::setDividerColor(const QColor &v) {
   assign(m_dividerColor, v, &MaterialList::dividerColorChanged);
 }
 
-void MaterialList::setSpringStiffness(qreal v) {
-  v = std::max(1.0, v);
-  if (qFuzzyCompare(m_stiffness, v))
-    return;
-  m_stiffness = v;
-  emit springStiffnessChanged();
-}
-
-void MaterialList::setSpringDamping(qreal v) {
-  v = qBound(0.05, v, 2.0);
-  if (qFuzzyCompare(m_damping, v))
-    return;
-  m_damping = v;
-  emit springDampingChanged();
-}
-
 void MaterialList::geometryChange(const QRectF &n, const QRectF &o) {
   QQuickPaintedItem::geometryChange(n, o);
   if (n.size() != o.size())
@@ -432,8 +296,8 @@ void MaterialList::mousePressEvent(QMouseEvent *e) {
   m_keyFocus = false;
   forceActiveFocus(Qt::MouseFocusReason);
   m_pressIndex = m_focusIndex = m_pressShown = i;
-  m_press.t = 1.0;
-  ensureDriver();
+  m_press.go(1.0);
+  animate();
   update();
   e->accept();
 }
@@ -445,8 +309,8 @@ void MaterialList::mouseReleaseEvent(QMouseEvent *e) {
     layoutItems();
   const int pressed = m_pressIndex;
   m_pressIndex = -1;
-  m_press.t = 0.0;
-  ensureDriver();
+  m_press.go(0.0);
+  animate();
   const bool inside = rowAt(e->position()) == pressed;
   update();
   if (inside)
@@ -458,8 +322,8 @@ void MaterialList::mouseUngrabEvent() {
   if (m_pressIndex < 0)
     return;
   m_pressIndex = -1;
-  m_press.t = 0.0;
-  ensureDriver();
+  m_press.go(0.0);
+  animate();
   update();
 }
 
@@ -540,16 +404,13 @@ void MaterialList::paint(QPainter *p) {
   if (n == 0 || width() <= 0.0)
     return;
 
-  p->setRenderHint(QPainter::Antialiasing, true);
-  p->setRenderHint(QPainter::TextAntialiasing, true);
-  p->setRenderHint(QPainter::SmoothPixmapTransform, true);
-  if (!isEnabled())
-    p->setOpacity(kDisabled);
+  preparePainter(p);
 
-  const QFont headF = textFont(16.0, QFont::Normal);
-  const QFont supF = textFont(14.0, QFont::Normal);
-  const QFont ovF = textFont(11.0, QFont::Medium);
-  const QFont trailF = textFont(11.0, QFont::Medium);
+  const QFont headF = Ryu::styledFont(m_font, 16.0, QFont::Normal);
+  const QFont supF = Ryu::styledFont(m_font, 14.0, QFont::Normal);
+  const QFont ovF = Ryu::styledFont(m_font, 11.0, QFont::Medium);
+  const QFont trailF = ovF;
+  const QFont avatarF = Ryu::styledFont(m_font, 16.0, QFont::Medium);
   const QColor base = resolvedItemColor();
   const QColor iconBase =
       m_iconColor.isValid() ? m_iconColor : m_supportingColor;
@@ -571,7 +432,7 @@ void MaterialList::paint(QPainter *p) {
     const bool checked = isChecked(i);
     p->save();
     if (!e.enabled)
-      p->setOpacity(p->opacity() * kDisabled);
+      p->setOpacity(p->opacity() * Ryu::kDisabledOpacity);
 
     qreal rt = 0.0, rb = 0.0;
     if (m_variant == Segmented) {
@@ -585,7 +446,7 @@ void MaterialList::paint(QPainter *p) {
         rb += (kOuterR - rb) * t;
       }
     }
-    const QPainterPath path = cornerRect(r, rt, rt, rb, rb);
+    const QPainterPath path = Ryu::roundedRect(r, rt, rt, rb, rb);
 
     const QColor bg = checked ? m_selectedColor : base;
     const QColor fg = checked ? m_selectedTextColor : m_textColor;
@@ -598,16 +459,12 @@ void MaterialList::paint(QPainter *p) {
       p->drawPath(path);
     }
 
-    qreal layer = 0.0;
-    if (m_hoverIndex == i)
-      layer = 0.08;
-    if (m_pressIndex == i ||
-        (m_keyFocus && hasActiveFocus() && m_focusIndex == i))
-      layer = 0.10;
+    const qreal layer =
+        Ryu::stateLayer(m_hoverIndex == i,
+                        m_pressIndex == i || (m_keyFocus && hasActiveFocus() &&
+                                              m_focusIndex == i));
     if (layer > 0.0) {
-      QColor l = fg;
-      l.setAlphaF(layer);
-      p->setBrush(l);
+      p->setBrush(Ryu::withAlpha(fg, layer));
       p->drawPath(path);
     }
 
@@ -628,21 +485,20 @@ void MaterialList::paint(QPainter *p) {
       p->setBrush(m_avatarColor);
       p->drawEllipse(QPointF(xl + kAvatar / 2.0, cy), kAvatar / 2.0,
                      kAvatar / 2.0);
-      const QFont af = textFont(16.0, QFont::Medium);
-      const qreal tw = QFontMetricsF(af).horizontalAdvance(e.avatarText);
-      drawText(p, af, e.avatarText, xl + kAvatar / 2.0 - tw / 2.0, cy,
-               m_avatarTextColor);
+      const qreal tw = QFontMetricsF(avatarF).horizontalAdvance(e.avatarText);
+      Ryu::drawLabel(p, avatarF, e.avatarText, xl + kAvatar / 2.0 - tw / 2.0,
+                     cy, m_avatarTextColor);
       xl += kAvatar + kGap;
     } else if (!e.leadingIcon.isEmpty()) {
-      drawGlyph(p, m_iconFont, e.leadingIcon, QPointF(xl + kIcon / 2.0, cy),
-                kIcon, ic);
+      Ryu::drawGlyph(p, m_iconFont, e.leadingIcon,
+                     QPointF(xl + kIcon / 2.0, cy), kIcon, ic);
       xl += kIcon + kGap;
     }
 
     bool hasTrailing = false;
     if (!e.trailingIcon.isEmpty()) {
-      drawGlyph(p, m_iconFont, e.trailingIcon, QPointF(xr - kIcon / 2.0, cy),
-                kIcon, ic);
+      Ryu::drawGlyph(p, m_iconFont, e.trailingIcon,
+                     QPointF(xr - kIcon / 2.0, cy), kIcon, ic);
       xr -= kIcon;
       hasTrailing = true;
     }
@@ -650,7 +506,7 @@ void MaterialList::paint(QPainter *p) {
       if (hasTrailing)
         xr -= kGap;
       const qreal tw = QFontMetricsF(trailF).horizontalAdvance(e.trailingText);
-      drawText(p, trailF, e.trailingText, xr - tw, cy, sup);
+      Ryu::drawLabel(p, trailF, e.trailingText, xr - tw, cy, sup);
       xr -= tw;
       hasTrailing = true;
     }
@@ -679,7 +535,7 @@ void MaterialList::paint(QPainter *p) {
     for (const Line &l : std::as_const(lines)) {
       const QString s =
           QFontMetricsF(*l.f).elidedText(l.s, Qt::ElideRight, avail);
-      drawText(p, *l.f, s, xl, y + l.lh / 2.0, l.c);
+      Ryu::drawLabel(p, *l.f, s, xl, y + l.lh / 2.0, l.c);
       y += l.lh;
     }
 

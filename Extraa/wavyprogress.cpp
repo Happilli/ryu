@@ -17,9 +17,9 @@ qreal easeStep(qreal x) {
 }
 } // namespace
 
-WavyProgress::WavyProgress(QQuickItem *parent) : QQuickPaintedItem(parent) {
-  setAntialiasing(true);
-}
+WavyProgress::WavyProgress(QQuickItem *parent) : RyuItem(parent) {}
+
+void WavyProgress::propertyAssigned() { syncFrames(window()); }
 
 void WavyProgress::componentComplete() {
   QQuickPaintedItem::componentComplete();
@@ -105,7 +105,7 @@ void WavyProgress::segment(qreal &a, qreal &b) const {
 }
 
 void WavyProgress::paint(QPainter *p) {
-  p->setRenderHint(QPainter::Antialiasing, true);
+  preparePainter(p);
   qreal a, b;
   segment(a, b);
   if (m_style == Linear)

@@ -1,90 +1,28 @@
 #include "./materialbuttongroup.hpp"
-#include "../Shapes/springdriver.hpp"
+#include "../Core/paintutil.hpp"
+#include "../Core/sizes.hpp"
 #include <QFontMetricsF>
 #include <QMetaObject>
 #include <QPainter>
-#include <QPainterPath>
-#include <QPen>
 #include <algorithm>
-#include <cmath>
 
 namespace {
-constexpr qreal kHeight[] = {32.0, 40.0, 56.0, 96.0, 136.0};
-constexpr qreal kIconSize[] = {20.0, 24.0, 24.0, 32.0, 40.0};
-constexpr qreal kFontPx[] = {14.0, 14.0, 16.0, 24.0, 32.0};
 constexpr qreal kPad[] = {12.0, 16.0, 24.0, 48.0, 64.0};
-constexpr qreal kIconGap[] = {4.0, 8.0, 8.0, 12.0, 16.0};
-constexpr qreal kSquareR[] = {12.0, 12.0, 16.0, 28.0, 28.0};
 constexpr qreal kInnerR[] = {8.0, 8.0, 8.0, 16.0, 20.0};
 constexpr qreal kStdGap[] = {18.0, 12.0, 8.0, 8.0, 8.0};
 constexpr qreal kConnectedGap = 2.0;
 constexpr qreal kPressGrow = 0.28;
-constexpr qreal kMaxStep = 0.004;
-
-QPainterPath sidedRect(const QRectF &r, qreal rl, qreal rr) {
-  const qreal maxR = std::min(r.height(), r.width()) / 2.0;
-  rl = std::clamp(rl, 0.0, maxR);
-  rr = std::clamp(rr, 0.0, maxR);
-  const qreal x0 = r.left(), x1 = r.right(), t = r.top(), b = r.bottom();
-
-  QPainterPath p;
-  p.moveTo(x0 + rl, t);
-  p.lineTo(x1 - rr, t);
-  if (rr > 0.0)
-    p.arcTo(x1 - 2 * rr, t, 2 * rr, 2 * rr, 90, -90);
-  p.lineTo(x1, b - rr);
-  if (rr > 0.0)
-    p.arcTo(x1 - 2 * rr, b - 2 * rr, 2 * rr, 2 * rr, 0, -90);
-  p.lineTo(x0 + rl, b);
-  if (rl > 0.0)
-    p.arcTo(x0, b - 2 * rl, 2 * rl, 2 * rl, 270, -90);
-  p.lineTo(x0, t + rl);
-  if (rl > 0.0)
-    p.arcTo(x0, t, 2 * rl, 2 * rl, 180, -90);
-  p.closeSubpath();
-  return p;
-}
-
-bool stepSpring(qreal &x, qreal &v, qreal t, qreal k, qreal z, qreal dt,
-                qreal eps) {
-  if (std::abs(x - t) < eps && std::abs(v) < eps * 10.0) {
-    x = t;
-    v = 0.0;
-    return false;
-  }
-  const qreal c = 2.0 * z * std::sqrt(k);
-  const int steps = std::max(1, int(std::ceil(dt / kMaxStep)));
-  const qreal h = dt / steps;
-  for (int i = 0; i < steps; ++i) {
-    const qreal acc = -k * (x - t) - c * v;
-    v += acc * h;
-    x += v * h;
-  }
-  return true;
-}
 } // namespace
 
 MaterialButtonGroup::MaterialButtonGroup(QQuickItem *parent)
-    : QQuickPaintedItem(parent) {
-  setAntialiasing(true);
+    : MaterialItem(parent, 520.0, 0.5) {
   setAcceptedMouseButtons(Qt::LeftButton);
   setActiveFocusOnTab(true);
-
-  auto *driver = new SpringDriver(this);
-  driver->tick = [this](qreal dt) { tick(dt); };
-  m_driver = driver;
-
   structureChanged();
 }
 
 QFont MaterialButtonGroup::labelFont() const {
-  QFont f = m_font;
-  f.setPixelSize(qRound(kFontPx[m_sizeStyle]));
-  f.setWeight(QFont::Weight(m_fontWeight));
-  f.setHintingPreference(QFont::PreferNoHinting);
-  f.setStyleStrategy(
-      QFont::StyleStrategy(QFont::PreferAntialias | QFont::PreferQuality));
-  return f;
+  return Ryu::styledFont(m_font, Ryu::kBtnFont[m_sizeStyle], m_fontWeight);
 }
 
 void MaterialButtonGroup::ensureMetrics() const {
@@ -113,9 +51,9 @@ qreal MaterialButtonGroup::itemWidth(int i) const {
   const qreal tw = m_textW.value(i);
   qreal w = 2.0 * kPad[m_sizeStyle];
   if (hasIcon)
-    w += kIconSize[m_sizeStyle];
+    w += Ryu::kBtnIcon[m_sizeStyle];
   if (hasIcon && tw > 0.0)
-    w += kIconGap[m_sizeStyle];
+    w += Ryu::kBtnIconGap[m_sizeStyle];
   return w + tw;
 }
 
@@ -134,7 +72,7 @@ void MaterialButtonGroup::layoutItems() {
   if (n == 0)
     return;
 
-  const qreal h = kHeight[m_sizeStyle];
+  const qreal h = Ryu::kBtnHeight[m_sizeStyle];
   const qreal gap = spacingValue();
   const qreal total = naturalWidth();
   const qreal extra =
@@ -165,7 +103,7 @@ void MaterialButtonGroup::structureChanged() {
   m_layoutDirty = true;
   m_metricsDirty = true;
   setImplicitWidth(naturalWidth());
-  setImplicitHeight(kHeight[m_sizeStyle]);
+  setImplicitHeight(Ryu::kBtnHeight[m_sizeStyle]);
   m_checked.erase(
       std::remove_if(m_checked.begin(), m_checked.end(),
                      [this](int i) { return i < 0 || i >= count(); }),
@@ -186,7 +124,7 @@ qreal MaterialButtonGroup::targetWidth(int i) const {
   const int n = count();
   if (m_pressIndex < 0 || n < 2)
     return 0.0;
-  const qreal g = kHeight[m_sizeStyle] * kPressGrow;
+  const qreal g = Ryu::kBtnHeight[m_sizeStyle] * kPressGrow;
   if (i == m_pressIndex)
     return g;
   const int nb = (m_pressIndex > 0 ? 1 : 0) + (m_pressIndex < n - 1 ? 1 : 0);
@@ -203,37 +141,20 @@ void MaterialButtonGroup::retarget(bool immediate) {
     immediate = true;
   }
   for (int i = 0; i < n; ++i) {
-    m_round[i].t = targetRound(i);
-    m_width[i].t = targetWidth(i);
-    if (immediate) {
-      m_round[i].x = m_round[i].t;
-      m_round[i].v = 0.0;
-      m_width[i].x = m_width[i].t;
-      m_width[i].v = 0.0;
-    }
+    m_round[i].go(targetRound(i), immediate);
+    m_width[i].go(targetWidth(i), immediate);
   }
   if (!immediate)
-    ensureDriver();
+    animate();
 }
 
-void MaterialButtonGroup::ensureDriver() {
-  if (m_driver->state() != QAbstractAnimation::Running)
-    m_driver->start();
-}
-
-void MaterialButtonGroup::tick(qreal dt) {
-  if (dt <= 0.0)
-    return;
+bool MaterialButtonGroup::advance(qreal dt) {
   bool active = false;
   for (int i = 0; i < m_round.size(); ++i) {
-    active |= stepSpring(m_round[i].x, m_round[i].v, m_round[i].t, m_stiffness,
-                         m_damping, dt, 0.001);
-    active |= stepSpring(m_width[i].x, m_width[i].v, m_width[i].t,
-                         m_stiffness * 1.2, m_damping, dt, 0.02);
+    active |= step(m_round[i], dt);
+    active |= step(m_width[i], dt, 0.02, 1.2);
   }
-  update();
-  if (!active)
-    m_driver->stop();
+  return active;
 }
 
 void MaterialButtonGroup::setLabels(const QStringList &v) {
@@ -322,22 +243,6 @@ void MaterialButtonGroup::setSpacing(qreal v) {
 void MaterialButtonGroup::setFillWidth(bool v) {
   if (assign(m_fillWidth, v, &MaterialButtonGroup::fillWidthChanged))
     m_layoutDirty = true;
-}
-
-void MaterialButtonGroup::setSpringStiffness(qreal v) {
-  v = std::max(1.0, v);
-  if (qFuzzyCompare(m_stiffness, v))
-    return;
-  m_stiffness = v;
-  emit springStiffnessChanged();
-}
-
-void MaterialButtonGroup::setSpringDamping(qreal v) {
-  v = qBound(0.05, v, 2.0);
-  if (qFuzzyCompare(m_damping, v))
-    return;
-  m_damping = v;
-  emit springDampingChanged();
 }
 
 void MaterialButtonGroup::setBorderWidth(qreal v) {
@@ -502,16 +407,13 @@ void MaterialButtonGroup::paint(QPainter *p) {
   if (n == 0)
     return;
 
-  p->setRenderHint(QPainter::Antialiasing, true);
-  p->setRenderHint(QPainter::TextAntialiasing, true);
-  if (!isEnabled())
-    p->setOpacity(0.38);
+  preparePainter(p);
 
   const int s = m_sizeStyle;
-  const qreal full = kHeight[s] / 2.0;
-  const qreal iconSz = kIconSize[s];
+  const qreal full = Ryu::kBtnHeight[s] / 2.0;
+  const qreal iconSz = Ryu::kBtnIcon[s];
+  const qreal square = Ryu::kBtnSquareR[s];
   const QFont lf = labelFont();
-  const QFontMetricsF fm(lf);
   const QVector<QRectF> rects = displayRects();
 
   for (int i = 0; i < n; ++i) {
@@ -521,7 +423,7 @@ void MaterialButtonGroup::paint(QPainter *p) {
 
     qreal rl, rr;
     if (m_variant == Standard) {
-      rl = rr = kSquareR[s] + (full - kSquareR[s]) * t;
+      rl = rr = square + (full - square) * t;
     } else {
       const qreal inner = kInnerR[s] + (full - kInnerR[s]) * t;
       rl = (i == 0) ? full : inner;
@@ -536,71 +438,35 @@ void MaterialButtonGroup::paint(QPainter *p) {
     if (!fg.isValid())
       fg = checked ? QColor("#FFFFFF") : QColor("#1D192B");
 
-    const QPainterPath path = sidedRect(r, rl, rr);
+    const QPainterPath path = Ryu::sidedRect(r, rl, rr);
     p->setPen(Qt::NoPen);
     p->setBrush(bg);
     p->drawPath(path);
 
     if (m_pressIndex == i ||
         (m_keyFocus && hasActiveFocus() && m_focusIndex == i)) {
-      QColor layer = fg;
-      layer.setAlphaF(0.10);
-      p->setBrush(layer);
+      p->setBrush(Ryu::withAlpha(fg, Ryu::kPressLayer));
       p->drawPath(path);
     }
 
     if (m_borderWidth > 0.0 && m_borderColor.isValid() &&
-        m_borderColor.alpha() > 0) {
-      p->save();
-      p->setClipPath(path);
-      p->setBrush(Qt::NoBrush);
-      p->setPen(QPen(m_borderColor, m_borderWidth * 2.0, Qt::SolidLine,
-                     Qt::FlatCap, Qt::RoundJoin));
-      p->drawPath(path);
-      p->restore();
-      p->setPen(Qt::NoPen);
-    }
+        m_borderColor.alpha() > 0)
+      Ryu::strokeInside(p, path, m_borderColor, m_borderWidth);
 
     const QString lbl = m_labels.value(i);
     const QString ic = m_icons.value(i);
     const qreal lblW = m_textW.value(i);
-    const qreal gap = (!ic.isEmpty() && !lbl.isEmpty()) ? kIconGap[s] : 0.0;
+    const qreal gap =
+        (!ic.isEmpty() && !lbl.isEmpty()) ? Ryu::kBtnIconGap[s] : 0.0;
     const qreal contentW = (ic.isEmpty() ? 0.0 : iconSz) + gap + lblW;
     qreal x = r.center().x() - contentW / 2.0;
 
     if (!ic.isEmpty()) {
-      QFont f = m_iconFont;
-      f.setPixelSize(qRound(iconSz));
-      f.setHintingPreference(QFont::PreferNoHinting);
-
-      QPainterPath gp;
-      gp.addText(QPointF(0.0, 0.0), f, ic);
-      const QRectF br = gp.boundingRect();
-
-      if (!br.isEmpty()) {
-        const qreal k =
-            std::min(1.0, iconSz / std::max(br.width(), br.height()));
-        p->save();
-        p->translate(x + iconSz / 2.0, r.center().y());
-        p->scale(k, k);
-        p->translate(-br.center());
-        p->setPen(Qt::NoPen);
-        p->setBrush(fg);
-        p->drawPath(gp);
-        p->restore();
-      }
+      Ryu::drawGlyph(p, m_iconFont, ic,
+                     QPointF(x + iconSz / 2.0, r.center().y()), iconSz, fg);
       x += iconSz + gap;
     }
 
-    if (!lbl.isEmpty()) {
-      QPainterPath tp;
-      tp.addText(QPointF(0.0, 0.0), lf, lbl);
-      p->save();
-      p->translate(x, r.center().y() + (fm.ascent() - fm.descent()) / 2.0);
-      p->setPen(Qt::NoPen);
-      p->setBrush(fg);
-      p->drawPath(tp);
-      p->restore();
-    }
+    Ryu::drawLabel(p, lf, lbl, x, r.center().y(), fg);
   }
 }
