@@ -17,6 +17,9 @@ constexpr qreal kOffIconD = 24.0;
 constexpr qreal kOnD = 24.0;
 constexpr qreal kPressD = 28.0;
 constexpr qreal kLayerD = 40.0;
+constexpr qreal kIconS = 4.0;
+constexpr qreal kDragSlop = 3.0;
+constexpr qreal kPressStiffness = 1.4;
 } // namespace
 
 MaterialSwitch::MaterialSwitch(QQuickItem *parent)
@@ -41,7 +44,7 @@ bool MaterialSwitch::advance(qreal dt) {
   bool active = m_dragging;
   if (!m_dragging)
     active |= step(m_pos, dt);
-  active |= step(m_press, dt, 0.001, 1.4);
+  active |= step(m_press, dt, 0.001, kPressStiffness);
   return active;
 }
 
@@ -129,16 +132,15 @@ void MaterialSwitch::mousePressEvent(QMouseEvent *e) {
 void MaterialSwitch::mouseMoveEvent(QMouseEvent *e) {
   if (!m_pressed)
     return;
-  const qreal dx = e->position().x() - m_pressX;
-  if (!m_dragging && std::abs(dx) > 3.0) {
+  const qreal x = e->position().x();
+  if (!m_dragging && std::abs(x - m_pressX) > kDragSlop) {
     m_dragging = true;
     setKeepMouseGrab(true);
     animate();
   }
   if (m_dragging) {
     const qreal off = (width() - kTrackW) / 2.0;
-    const qreal t = (e->position().x() - off - kOffX) / (kOnX - kOffX);
-    m_pos.x = std::clamp(t, 0.0, 1.0);
+    m_pos.x = std::clamp((x - off - kOffX) / (kOnX - kOffX), 0.0, 1.0);
     m_pos.v = 0.0;
     update();
   }
@@ -168,6 +170,7 @@ void MaterialSwitch::mouseReleaseEvent(QMouseEvent *e) {
 void MaterialSwitch::mouseUngrabEvent() {
   if (m_dragging) {
     m_dragging = false;
+    setKeepMouseGrab(false);
     retarget();
   }
   setPressed(false);
@@ -215,8 +218,9 @@ void MaterialSwitch::focusOutEvent(QFocusEvent *e) {
 void MaterialSwitch::paint(QPainter *p) {
   preparePainter(p);
 
-  const qreal pos = std::clamp(m_pos.x, 0.0, 1.0);
-  const qreal press = std::clamp(m_press.x, 0.0, 1.0);
+  const qreal posRaw = m_pos.x;
+  const qreal pos = std::clamp(posRaw, 0.0, 1.0);
+  const qreal press = std::max(0.0, m_press.x);
 
   p->translate((width() - kTrackW) / 2.0, (height() - kTrackH) / 2.0);
 
@@ -238,9 +242,10 @@ void MaterialSwitch::paint(QPainter *p) {
   }
 
   const qreal offD = m_showIcons ? kOffIconD : kOffD;
-  qreal d = offD + (kOnD - offD) * pos;
-  d = std::max(0.0, d + (kPressD - d) * press);
-  const qreal cx = kOffX + (kOnX - kOffX) * pos;
+  const qreal baseD = offD + (kOnD - offD) * pos;
+  const qreal d = std::max(0.0, baseD + (kPressD - baseD) * press);
+  const qreal r = d / 2.0;
+  const qreal cx = std::clamp(kOffX + (kOnX - kOffX) * posRaw, r, kTrackW - r);
   const qreal cy = kTrackH / 2.0;
 
   const qreal layer =
@@ -252,29 +257,30 @@ void MaterialSwitch::paint(QPainter *p) {
   }
 
   p->setBrush(Ryu::mix(m_handleColor, m_checkedHandleColor, pos));
-  p->drawEllipse(QPointF(cx, cy), d / 2.0, d / 2.0);
+  p->drawEllipse(QPointF(cx, cy), r, r);
 
   if (!m_showIcons)
     return;
 
   const QColor ic = Ryu::mix(m_iconColor, m_checkedIconColor, pos);
-  const qreal s = 4.0;
   p->setBrush(Qt::NoBrush);
 
   const qreal offA = 1.0 - pos;
   if (offA > 0.02) {
     p->setPen(QPen(Ryu::withAlpha(ic, ic.alphaF() * offA), 2.0, Qt::SolidLine,
                    Qt::RoundCap, Qt::RoundJoin));
-    p->drawLine(QPointF(cx - s, cy - s), QPointF(cx + s, cy + s));
-    p->drawLine(QPointF(cx - s, cy + s), QPointF(cx + s, cy - s));
+    p->drawLine(QPointF(cx - kIconS, cy - kIconS),
+                QPointF(cx + kIconS, cy + kIconS));
+    p->drawLine(QPointF(cx - kIconS, cy + kIconS),
+                QPointF(cx + kIconS, cy - kIconS));
   }
   if (pos > 0.02) {
     p->setPen(QPen(Ryu::withAlpha(ic, ic.alphaF() * pos), 2.0, Qt::SolidLine,
                    Qt::RoundCap, Qt::RoundJoin));
     QPainterPath check;
-    check.moveTo(cx - s, cy + 0.5);
-    check.lineTo(cx - s / 3.0, cy + s * 0.8);
-    check.lineTo(cx + s, cy - s * 0.7);
+    check.moveTo(cx - kIconS, cy + 0.5);
+    check.lineTo(cx - kIconS / 3.0, cy + kIconS * 0.8);
+    check.lineTo(cx + kIconS, cy - kIconS * 0.7);
     p->drawPath(check);
   }
 }
