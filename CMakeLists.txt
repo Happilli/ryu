@@ -134,3 +134,14 @@ ryu_module(Extraa
         Qt6::Quick
         RyuCore
 )
+
+ryu_module(Widgets
+    SOURCES
+        Core/ryuitem.cpp
+        Core/ryuitem.hpp
+        Widgets/digitalclock.cpp
+        Widgets/digitalclock.hpp
+    LIBS
+        Qt6::Quick
+        RyuCore
+)
