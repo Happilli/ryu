@@ -15,6 +15,13 @@ constexpr int kSlackMs = 20;
 
 using Group = QList<QPainterPath>;
 
+QPainterPath textPath(const QFont &font, const QString &s) {
+  QPainterPath p;
+  p.setFillRule(Qt::WindingFill);
+  p.addText(QPointF(0.0, 0.0), font, s);
+  return p.simplified();
+}
+
 QPainterPath cutShape(const QPainterPath &shape, qreal width) {
   QPainterPathStroker stroker;
   stroker.setWidth(width);
@@ -22,7 +29,7 @@ QPainterPath cutShape(const QPainterPath &shape, qreal width) {
   stroker.setCapStyle(Qt::RoundCap);
   QPainterPath cut = stroker.createStroke(shape);
   cut.setFillRule(Qt::WindingFill);
-  return cut.united(shape);
+  return cut.united(shape).simplified();
 }
 
 Group buildGroup(const QString &s, const QFont &font, qreal ov, qreal x0,
@@ -31,8 +38,7 @@ Group buildGroup(const QString &s, const QFont &font, qreal ov, qreal x0,
   qreal x = x0;
   end = x0;
   for (const QChar c : s) {
-    QPainterPath p;
-    p.addText(QPointF(0.0, 0.0), font, QString(c));
+    QPainterPath p = textPath(font, QString(c));
     const QRectF r = p.boundingRect();
     if (r.isEmpty())
       continue;
@@ -130,9 +136,8 @@ void DigitalClock::refresh() {
 }
 
 void DigitalClock::rebuildVertical(const QFont &f) {
-  QPainterPath a, b;
-  a.addText(QPointF(0.0, 0.0), f, m_hours);
-  b.addText(QPointF(0.0, 0.0), f, m_minutes);
+  QPainterPath a = textPath(f, m_hours);
+  QPainterPath b = textPath(f, m_minutes);
 
   const QRectF ra = a.boundingRect();
   const QRectF rb = b.boundingRect();
@@ -194,7 +199,6 @@ void DigitalClock::rebuildVertical(const QFont &f) {
   for (QPainterPath &p : period)
     p = tf.map(p);
 
-  // carve the AM/PM glyphs the same way horizontal does
   const qreal cutW = 2.0 * m_gap * H * kPeriodScale * k;
   for (int i = 1; i < period.size(); ++i) {
     const QPainterPath cut = cutShape(period[i], cutW);
@@ -203,6 +207,7 @@ void DigitalClock::rebuildVertical(const QFont &f) {
   }
 
   QPainterPath extra;
+  extra.setFillRule(Qt::WindingFill);
   for (const QPainterPath &p : period)
     extra.addPath(p);
 
@@ -210,6 +215,7 @@ void DigitalClock::rebuildVertical(const QFont &f) {
   m_bottom = b;
   m_extra = extra;
 }
+
 void DigitalClock::rebuildHorizontal(const QFont &f) {
   QPainterPath zero;
   zero.addText(QPointF(0.0, 0.0), f, QStringLiteral("0"));
@@ -233,7 +239,7 @@ void DigitalClock::rebuildHorizontal(const QFont &f) {
   if (m_showSep) {
     QFont sf = f;
     sf.setPixelSize(qRound(kRefPx * kSepScale));
-    colon.addText(QPointF(0.0, 0.0), sf, QStringLiteral(":"));
+    colon = textPath(sf, QStringLiteral(":"));
     const QRectF rs = colon.boundingRect();
     colon.translate(x - rs.left(), midY - rs.center().y());
     x = colon.boundingRect().right() + gx;
@@ -311,6 +317,7 @@ void DigitalClock::rebuildHorizontal(const QFont &f) {
   carve(period);
 
   QPainterPath all;
+  all.setFillRule(Qt::WindingFill);
   for (const Group *g : {&hours, &mins, &period})
     for (const QPainterPath &p : *g)
       all.addPath(p);
