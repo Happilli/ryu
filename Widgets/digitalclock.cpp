@@ -136,23 +136,27 @@ void DigitalClock::refresh() {
 }
 
 void DigitalClock::rebuildVertical(const QFont &f) {
-  QPainterPath a = textPath(f, m_hours);
-  QPainterPath b = textPath(f, m_minutes);
-
-  const QRectF ra = a.boundingRect();
-  const QRectF rb = b.boundingRect();
-  if (ra.isEmpty() || rb.isEmpty())
-    return;
-
   QPainterPath zero;
   zero.addText(QPointF(0.0, 0.0), f, QStringLiteral("0"));
   const qreal H = zero.boundingRect().height();
+  if (H <= 0.0)
+    return;
 
-  a.translate(-ra.center().x(), -ra.top());
-  b.translate(-rb.center().x(), ra.height() * (1.0 - m_overlap) - rb.top());
+  const qreal ov = m_overlap * H;
+  qreal end = 0.0;
+  Group hours = buildGroup(m_hours, f, ov, 0.0, end);
+  Group mins = buildGroup(m_minutes, f, ov, 0.0, end);
+  if (hours.isEmpty() || mins.isEmpty())
+    return;
 
-  const QRectF A = a.boundingRect();
-  const QRectF B = b.boundingRect();
+  const QRectF ra = groupBounds(hours);
+  const QRectF rb = groupBounds(mins);
+  shiftGroup(hours, -ra.center().x(), -ra.top());
+  shiftGroup(mins, -rb.center().x(),
+             ra.height() * (1.0 - m_overlap) - rb.top());
+
+  const QRectF A = groupBounds(hours);
+  const QRectF B = groupBounds(mins);
 
   Group period;
   if (wantsPeriod()) {
@@ -194,28 +198,44 @@ void DigitalClock::rebuildVertical(const QFont &f) {
   tf.scale(k, k);
   tf.translate(-total.center().x(), -total.center().y());
 
-  a = tf.map(a);
-  b = tf.map(b);
-  for (QPainterPath &p : period)
-    p = tf.map(p);
+  auto apply = [&](Group &g) {
+    for (QPainterPath &p : g)
+      p = tf.map(p);
+  };
+  apply(hours);
+  apply(mins);
+  apply(period);
 
-  const qreal cutW = 2.0 * m_gap * H * kPeriodScale * k;
-  for (int i = 1; i < period.size(); ++i) {
-    const QPainterPath cut = cutShape(period[i], cutW);
-    for (int j = 0; j < i; ++j)
-      period[j] = period[j].subtracted(cut);
+  const qreal cutW = 2.0 * m_gap * H * k;
+  auto carve = [&](Group &g, qreal width) {
+    for (int i = 1; i < g.size(); ++i) {
+      const QPainterPath cut = cutShape(g[i], width);
+      for (int j = 0; j < i; ++j)
+        g[j] = g[j].subtracted(cut);
+    }
+  };
+  carve(hours, cutW);
+  carve(mins, cutW);
+  carve(period, cutW * kPeriodScale);
+
+  for (const QPainterPath &m : std::as_const(mins)) {
+    const QPainterPath cut = cutShape(m, cutW);
+    for (QPainterPath &hp : hours)
+      hp = hp.subtracted(cut);
   }
 
-  QPainterPath extra;
-  extra.setFillRule(Qt::WindingFill);
-  for (const QPainterPath &p : period)
-    extra.addPath(p);
+  auto merge = [](const Group &g) {
+    QPainterPath out;
+    out.setFillRule(Qt::WindingFill);
+    for (const QPainterPath &p : g)
+      out.addPath(p);
+    return out;
+  };
 
-  m_top = a.subtracted(cutShape(b, 2.0 * m_gap * rb.height() * k));
-  m_bottom = b;
-  m_extra = extra;
+  m_top = merge(hours);
+  m_bottom = merge(mins);
+  m_extra = merge(period);
 }
-
 void DigitalClock::rebuildHorizontal(const QFont &f) {
   QPainterPath zero;
   zero.addText(QPointF(0.0, 0.0), f, QStringLiteral("0"));
