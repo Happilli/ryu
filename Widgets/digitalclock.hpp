@@ -2,6 +2,7 @@
 #include "../Core/ryuitem.hpp"
 #include <QColor>
 #include <QFont>
+#include <QList>
 #include <QPainterPath>
 #include <QString>
 #include <QTimer>
@@ -15,8 +16,8 @@ class DigitalClock : public RyuItem {
   Q_PROPERTY(QString period READ period NOTIFY timeChanged)
   Q_PROPERTY(Orientation orientation READ orientation WRITE setOrientation
                  NOTIFY orientationChanged)
-  Q_PROPERTY(bool use24Hour READ use24Hour WRITE setUse24Hour NOTIFY
-                 use24HourChanged)
+  Q_PROPERTY(
+      bool use24Hour READ use24Hour WRITE setUse24Hour NOTIFY use24HourChanged)
   Q_PROPERTY(
       bool showAmPm READ showAmPm WRITE setShowAmPm NOTIFY showAmPmChanged)
   Q_PROPERTY(AmPmStyle amPmStyle READ amPmStyle WRITE setAmPmStyle NOTIFY
@@ -33,8 +34,8 @@ class DigitalClock : public RyuItem {
                  fontWeightChanged)
   Q_PROPERTY(qreal gap READ gap WRITE setGap NOTIFY gapChanged)
   Q_PROPERTY(qreal overlap READ overlap WRITE setOverlap NOTIFY overlapChanged)
-  Q_PROPERTY(qreal groupGap READ groupGap WRITE setGroupGap NOTIFY
-                 groupGapChanged)
+  Q_PROPERTY(
+      qreal groupGap READ groupGap WRITE setGroupGap NOTIFY groupGapChanged)
   Q_PROPERTY(qreal letterSpacing READ letterSpacing WRITE setLetterSpacing
                  NOTIFY letterSpacingChanged)
   Q_PROPERTY(qreal padding READ padding WRITE setPadding NOTIFY paddingChanged)
@@ -106,12 +107,17 @@ signals:
 
 protected:
   void componentComplete() override;
-  void geometryChange(const QRectF &n, const QRectF &o) override;
   void itemChange(ItemChange change, const ItemChangeData &data) override;
 
 private:
+  struct Piece {
+    QPainterPath path;
+    qreal cut = 0.0;
+  };
+
   bool wantsPeriod() const { return !m_24h && m_showAmPm; }
   bool timerWanted() const;
+  bool stale() const;
   void syncTimer();
   void rebuild();
   void rebuildVertical(const QFont &f);
@@ -138,10 +144,13 @@ private:
   qreal m_spacing = -0.04;
   qreal m_padding = 0.0;
 
-  QPainterPath m_top;
-  QPainterPath m_bottom;
-  QPainterPath m_extra;
+  QList<Piece> m_pieces;
   bool m_dirty = true;
+
+  qreal m_bw = 0.0;
+  qreal m_bh = 0.0;
+  qreal m_aspect = 0.0;
+  qreal m_builtW = 0.0;
 
   QTimer m_timer;
 };
