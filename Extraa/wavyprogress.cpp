@@ -10,6 +10,10 @@ constexpr qreal kTwoPi = 2.0 * M_PI;
 constexpr qreal kCycle = 1.8;
 constexpr qreal kSpin = 1.4;
 constexpr qreal kMaxDt = 1.0 / 30.0;
+constexpr qreal kSuperSample = 2.0;
+constexpr int kMaxTexSide = 4096;
+constexpr qreal kSegPerWave = 16.0;
+constexpr qreal kArcStepsPerWave = 48.0;
 
 qreal easeStep(qreal x) {
   x = std::clamp(x, 0.0, 1.0);
@@ -17,12 +21,16 @@ qreal easeStep(qreal x) {
 }
 } // namespace
 
-WavyProgress::WavyProgress(QQuickItem *parent) : RyuItem(parent) {}
+WavyProgress::WavyProgress(QQuickItem *parent) : RyuItem(parent) {
+  setSmooth(true);
+  setMipmap(true);
+}
 
 void WavyProgress::propertyAssigned() { syncFrames(window()); }
 
 void WavyProgress::componentComplete() {
   QQuickPaintedItem::componentComplete();
+  updateTexture(window());
   syncFrames(window());
 }
 
@@ -34,9 +42,27 @@ void WavyProgress::itemChange(ItemChange change, const ItemChangeData &data) {
       m_conn = {};
     }
     syncFrames(data.window);
+    updateTexture(data.window);
   } else if (change == ItemVisibleHasChanged) {
     syncFrames(window());
   }
+}
+
+void WavyProgress::geometryChange(const QRectF &n, const QRectF &o) {
+  QQuickPaintedItem::geometryChange(n, o);
+  if (n.size() != o.size())
+    updateTexture(window());
+}
+
+void WavyProgress::updateTexture(QQuickWindow *w) {
+  if (width() <= 0.0 || height() <= 0.0) {
+    setTextureSize(QSize());
+    return;
+  }
+  const qreal dpr = w ? w->effectiveDevicePixelRatio() : 1.0;
+  const qreal k = dpr * kSuperSample;
+  setTextureSize(QSize(std::min(kMaxTexSide, int(std::ceil(width() * k))),
+                       std::min(kMaxTexSide, int(std::ceil(height() * k)))));
 }
 
 void WavyProgress::syncFrames(QQuickWindow *w) {
@@ -141,15 +167,24 @@ void WavyProgress::paintLinear(QPainter *p, qreal a, qreal b) {
     return;
   }
 
-  const qreal step = std::min(2.0, m_wavelength / 12.0);
   const qreal k = kTwoPi / m_wavelength;
+  const qreal ph = m_phase;
+  auto yAt = [&](qreal x) { return cy + amp * std::sin(k * x - ph); };
+  auto dyAt = [&](qreal x) { return amp * k * std::cos(k * x - ph); };
+
+  const int segs =
+      std::max(1, int(std::ceil((xb - xa) / (m_wavelength / kSegPerWave))));
+  const qreal dx = (xb - xa) / segs;
+
   QPainterPath path;
-  for (qreal x = xa;; x += step) {
-    const qreal xx = std::min(x, xb);
-    const QPointF pt(xx, cy + amp * std::sin(k * xx - m_phase));
-    x == xa ? path.moveTo(pt) : path.lineTo(pt);
-    if (xx >= xb)
-      break;
+  path.moveTo(xa, yAt(xa));
+  for (int i = 0; i < segs; ++i) {
+    const qreal sx0 = xa + i * dx;
+    const qreal sx1 = (i == segs - 1) ? xb : sx0 + dx;
+    const qreal h = (sx1 - sx0) / 3.0;
+    path.cubicTo(QPointF(sx0 + h, yAt(sx0) + dyAt(sx0) * h),
+                 QPointF(sx1 - h, yAt(sx1) - dyAt(sx1) * h),
+                 QPointF(sx1, yAt(sx1)));
   }
   pen.setColor(m_color);
   p->setPen(pen);
@@ -179,12 +214,12 @@ void WavyProgress::paintCircular(QPainter *p, qreal a, qreal b) {
 
   const qreal t0 = tb + ga, t1 = kTwoPi + ta - ga;
   if (t1 > t0) {
+    const QRectF box(c.x() - r, c.y() - r, 2.0 * r, 2.0 * r);
+    const qreal deg = 180.0 / M_PI;
+    const qreal startDeg = 90.0 - (t0 + rot) * deg;
     QPainterPath track;
-    const int steps = std::max(8, int((t1 - t0) / kTwoPi * 128));
-    for (int i = 0; i <= steps; ++i) {
-      const QPointF q = pt(t0 + (t1 - t0) * i / steps, r);
-      i == 0 ? track.moveTo(q) : track.lineTo(q);
-    }
+    track.arcMoveTo(box, startDeg);
+    track.arcTo(box, startDeg, -(t1 - t0) * deg);
     p->drawPath(track);
   }
 
@@ -195,7 +230,8 @@ void WavyProgress::paintCircular(QPainter *p, qreal a, qreal b) {
     return;
   }
   QPainterPath arc;
-  const int steps = std::max(8, int((tb - ta) / kTwoPi * n * 16));
+  const int steps =
+      std::max(32, int((tb - ta) / kTwoPi * n * kArcStepsPerWave));
   for (int i = 0; i <= steps; ++i) {
     const qreal th = ta + (tb - ta) * i / steps;
     const QPointF q = pt(th, r + amp * std::sin(n * th - m_phase));

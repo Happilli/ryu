@@ -72,10 +72,12 @@ signals:
 protected:
   void componentComplete() override;
   void itemChange(ItemChange change, const ItemChangeData &data) override;
+  void geometryChange(const QRectF &n, const QRectF &o) override;
   void propertyAssigned() override;
 
 private:
   void syncFrames(QQuickWindow *w);
+  void updateTexture(QQuickWindow *w);
   void onFrame();
   void segment(qreal &a, qreal &b) const;
   void paintLinear(QPainter *p, qreal a, qreal b);
