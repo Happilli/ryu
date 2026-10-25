@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
 project(ryu)
+
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_AUTOMOC ON)
 
@@ -20,12 +21,18 @@ target_include_directories(RyuCore PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(RyuCore PUBLIC Qt6::Core Qt6::Gui Qt6::Qml Qt6::Quick)
 
 function(ryu_module name)
-    cmake_parse_arguments(ARG "" "" "SOURCES;LIBS" ${ARGN})
+    cmake_parse_arguments(ARG "" "" "SOURCES;LIBS;DEPS" ${ARGN})
+
+    set(dep_args "")
+    if(ARG_DEPS)
+        set(dep_args DEPENDENCIES ${ARG_DEPS})
+    endif()
 
     qt_add_qml_module(${name}
         URI Ryu.${name}
         VERSION 1.0
         SOURCES ${ARG_SOURCES}
+        ${dep_args}
         NO_PLUGIN_OPTIONAL
         OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/Ryu/${name}"
     )
@@ -104,6 +111,8 @@ ryu_module(Shapes
     LIBS
         Qt6::Quick
         RyuCore
+    DEPS
+        QtQuick
 )
 
 target_sources(Shapes PRIVATE Shapes/shapedata.inc)
@@ -126,6 +135,8 @@ ryu_module(Extraa
         Extraa/materialswitch.hpp
         Extraa/materialsearchbox.cpp
         Extraa/materialsearchbox.hpp
+        Extraa/materialsearchview.cpp
+        Extraa/materialsearchview.hpp
         Extraa/materialmenu.cpp
         Extraa/materialmenu.hpp
         Extraa/materiallist.cpp
@@ -133,15 +144,19 @@ ryu_module(Extraa
     LIBS
         Qt6::Quick
         RyuCore
+    DEPS
+        QtQuick
 )
 
 ryu_module(Widgets
     SOURCES
-        Core/ryuitem.cpp
-        Core/ryuitem.hpp
         Widgets/digitalclock.cpp
         Widgets/digitalclock.hpp
     LIBS
         Qt6::Quick
         RyuCore
+        Extraa
+    DEPS
+        QtQuick
+        Ryu.Extraa
 )
