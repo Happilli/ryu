@@ -31,7 +31,11 @@ MaterialSwitch::MaterialSwitch(QQuickItem *parent)
   setImplicitHeight(kTrackH);
   retarget(true);
 }
-
+void MaterialSwitch::componentComplete() {
+  MaterialItem::componentComplete();
+  retarget(true);
+  update();
+}
 void MaterialSwitch::retarget(bool immediate) {
   if (!m_dragging)
     m_pos.go(m_checked ? 1.0 : 0.0, immediate);

@@ -124,6 +124,7 @@ signals:
 
 protected:
   bool advance(qreal dt) override;
+  void componentComplete() override;
   void geometryChange(const QRectF &n, const QRectF &o) override;
   void mousePressEvent(QMouseEvent *e) override;
   void mouseReleaseEvent(QMouseEvent *e) override;

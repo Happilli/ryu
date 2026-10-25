@@ -20,7 +20,10 @@ MaterialButtonGroup::MaterialButtonGroup(QQuickItem *parent)
   setActiveFocusOnTab(true);
   structureChanged();
 }
-
+void MaterialButtonGroup::componentComplete() {
+  MaterialItem::componentComplete();
+  retarget(true);
+}
 QFont MaterialButtonGroup::labelFont() const {
   return Ryu::styledFont(m_font, Ryu::kBtnFont[m_sizeStyle], m_fontWeight);
 }
