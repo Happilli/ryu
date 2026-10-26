@@ -97,7 +97,7 @@ int MaterialSearchBox::zoneAt(const QPointF &pt) const {
     if (clearVisible() && std::abs(pt.x() - clearCx()) <= half)
       return Clear;
   }
-  const QRectF bar(0.0, (height() - kHeight) / 2.0, width(), kHeight);
+  const QRectF bar(0.0, std::round((height() - kHeight) / 2.0), width(), kHeight);
   return bar.contains(pt) ? Text : None;
 }
 
@@ -667,7 +667,7 @@ void MaterialSearchBox::paint(QPainter *p) {
   preparePainter(p);
 
   const qreal dpr = window() ? window()->devicePixelRatio() : 1.0;
-  const QRectF bar(0.0, (h - kHeight) / 2.0, w, kHeight);
+  const QRectF bar(0.0, std::round((h - kHeight) / 2.0), w, kHeight);
   const qreal cy = h / 2.0;
   const qreal full = std::min(bar.width(), bar.height()) / 2.0;
 

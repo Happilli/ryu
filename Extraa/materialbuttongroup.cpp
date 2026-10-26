@@ -5,6 +5,7 @@
 #include <QMetaObject>
 #include <QPainter>
 #include <algorithm>
+#include <cmath>
 
 namespace {
 constexpr qreal kPad[] = {12.0, 16.0, 24.0, 48.0, 64.0};
@@ -80,7 +81,7 @@ void MaterialButtonGroup::layoutItems() {
   const qreal total = naturalWidth();
   const qreal extra =
       (m_fillWidth && width() > total) ? (width() - total) / n : 0.0;
-  const qreal y = (height() - h) / 2.0;
+  const qreal y = std::round((height() - h) / 2.0);
 
   qreal x = 0.0;
   for (int i = 0; i < n; ++i) {
@@ -105,7 +106,7 @@ QVector<QRectF> MaterialButtonGroup::displayRects() const {
 void MaterialButtonGroup::structureChanged() {
   m_layoutDirty = true;
   m_metricsDirty = true;
-  setImplicitWidth(naturalWidth());
+  setImplicitWidth(std::ceil(naturalWidth()));
   setImplicitHeight(Ryu::kBtnHeight[m_sizeStyle]);
   m_checked.erase(
       std::remove_if(m_checked.begin(), m_checked.end(),

@@ -5,6 +5,7 @@
 #include <QPainter>
 #include <QPen>
 #include <algorithm>
+#include <cmath>
 
 namespace {
 constexpr qreal kPadOuter[] = {12.0, 16.0, 24.0, 48.0, 64.0};
@@ -79,13 +80,13 @@ QColor MaterialSplitButton::foregroundColor() const {
 }
 
 void MaterialSplitButton::updateImplicit() {
-  setImplicitWidth(leadWidth() + kSegGap + kTrailW[m_sizeStyle]);
+  setImplicitWidth(std::ceil(leadWidth() + kSegGap + kTrailW[m_sizeStyle]));
   setImplicitHeight(Ryu::kBtnHeight[m_sizeStyle]);
 }
 
 int MaterialSplitButton::hit(const QPointF &pt) const {
   const qreal h = Ryu::kBtnHeight[m_sizeStyle];
-  const qreal y = (height() - h) / 2.0;
+  const qreal y = std::round((height() - h) / 2.0);
   if (pt.y() < y || pt.y() > y + h)
     return None;
   const qreal lw = leadWidth();
@@ -282,7 +283,7 @@ void MaterialSplitButton::paint(QPainter *p) {
   const qreal h = Ryu::kBtnHeight[s];
   const qreal full = h / 2.0;
   const qreal inner = kInnerR[s];
-  const qreal y = (height() - h) / 2.0;
+  const qreal y = std::round((height() - h) / 2.0);
   const qreal lw = leadWidth();
   const qreal tw = kTrailW[s];
 

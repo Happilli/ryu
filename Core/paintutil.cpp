@@ -7,6 +7,7 @@
 #include <QQmlContext>
 #include <QQmlFile>
 #include <algorithm>
+#include <cmath>
 
 namespace Ryu {
 
@@ -49,7 +50,7 @@ QFont styledFont(const QFont &base, qreal px, int weight) {
   QFont f = base;
   f.setPixelSize(qMax(1, qRound(px)));
   f.setWeight(QFont::Weight(weight));
-  f.setHintingPreference(QFont::PreferNoHinting);
+  f.setHintingPreference(QFont::PreferDefaultHinting);
   f.setStyleStrategy(
       QFont::StyleStrategy(QFont::PreferAntialias | QFont::PreferQuality));
   return f;
@@ -59,7 +60,7 @@ void drawGlyph(QPainter *p, const QFont &font, const QString &text,
                const QPointF &center, qreal size, const QColor &color) {
   QFont f = font;
   f.setPixelSize(qMax(1, qRound(size)));
-  f.setHintingPreference(QFont::PreferNoHinting);
+  f.setHintingPreference(QFont::PreferDefaultHinting);
 
   QPainterPath gp;
   gp.addText(QPointF(0.0, 0.0), f, text);
@@ -83,13 +84,13 @@ void drawLabel(QPainter *p, const QFont &font, const QString &text, qreal x,
   if (text.isEmpty())
     return;
   const QFontMetricsF fm(font);
-  QPainterPath tp;
-  tp.addText(QPointF(0.0, 0.0), font, text);
   p->save();
-  p->translate(x, cy + (fm.ascent() - fm.descent()) / 2.0);
-  p->setPen(Qt::NoPen);
-  p->setBrush(color);
-  p->drawPath(tp);
+  p->setFont(font);
+  p->setPen(color);
+  p->setBrush(Qt::NoBrush);
+  p->drawText(QPointF(std::round(x),
+                      std::round(cy + (fm.ascent() - fm.descent()) / 2.0)),
+              text);
   p->restore();
 }
 
