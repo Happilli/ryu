@@ -1,5 +1,7 @@
 #include "./materialswitch.hpp"
 #include "../Core/paintutil.hpp"
+#include <QCursor>
+#include <QGuiApplication>
 #include <QPainter>
 #include <QPainterPath>
 #include <QPen>
@@ -30,6 +32,23 @@ MaterialSwitch::MaterialSwitch(QQuickItem *parent)
   setImplicitWidth(kTrackW);
   setImplicitHeight(kTrackH);
   retarget(true);
+}
+MaterialSwitch::~MaterialSwitch() { setHand(false); }
+
+void MaterialSwitch::setHand(bool on) {
+  if (on == m_handOn)
+    return;
+  m_handOn = on;
+  if (on)
+    QGuiApplication::setOverrideCursor(QCursor(Qt::PointingHandCursor));
+  else
+    QGuiApplication::restoreOverrideCursor();
+}
+
+bool MaterialSwitch::overTrack(const QPointF &pt) const {
+  const QRectF track((width() - kTrackW) / 2.0, (height() - kTrackH) / 2.0,
+                     kTrackW, kTrackH);
+  return track.contains(pt);
 }
 void MaterialSwitch::componentComplete() {
   MaterialItem::componentComplete();
@@ -121,7 +140,7 @@ void MaterialSwitch::setHovered(bool v) {
 }
 
 void MaterialSwitch::mousePressEvent(QMouseEvent *e) {
-  if (!isEnabled()) {
+  if (!isEnabled() || !overTrack(e->position())) {
     e->ignore();
     return;
   }
@@ -182,13 +201,22 @@ void MaterialSwitch::mouseUngrabEvent() {
 
 void MaterialSwitch::hoverEnterEvent(QHoverEvent *e) {
   QQuickPaintedItem::hoverEnterEvent(e);
-  if (isEnabled())
-    setHovered(true);
+  hoverMoveEvent(e);
+}
+
+void MaterialSwitch::hoverMoveEvent(QHoverEvent *e) {
+  QQuickPaintedItem::hoverMoveEvent(e);
+  if (!isEnabled())
+    return;
+  const bool over = overTrack(e->position());
+  setHovered(over);
+  setHand(over);
 }
 
 void MaterialSwitch::hoverLeaveEvent(QHoverEvent *e) {
   QQuickPaintedItem::hoverLeaveEvent(e);
   setHovered(false);
+  setHand(false);
 }
 
 void MaterialSwitch::keyPressEvent(QKeyEvent *e) {

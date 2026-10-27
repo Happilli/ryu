@@ -61,3 +61,5 @@ menu.qml
 list.qml
 clock.qml
 test.qml
+checkradio.qml
+segmented.qml

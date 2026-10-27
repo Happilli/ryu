@@ -141,6 +141,12 @@ ryu_module(Extraa
         Extraa/materialmenu.hpp
         Extraa/materiallist.cpp
         Extraa/materiallist.hpp
+        Extraa/materialcheckbox.hpp
+        Extraa/materialcheckbox.cpp
+        Extraa/materialradiobutton.hpp
+        Extraa/materialradiobutton.cpp
+        Extraa/materialsegmentedbutton.hpp
+        Extraa/materialsegmentedbutton.cpp
     LIBS
         Qt6::Quick
         RyuCore

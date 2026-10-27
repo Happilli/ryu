@@ -78,6 +78,7 @@ public:
   Q_ENUM(SizeStyle)
 
   explicit MaterialSlider(QQuickItem *parent = nullptr);
+  ~MaterialSlider() override;
 
   qreal from() const { return m_from; }
   qreal to() const { return m_to; }
@@ -211,6 +212,7 @@ private:
   bool m_showIndicator = true;
   int m_decimals = -1;
   bool m_pressed = false;
+  bool m_cursorOverridden = false;
 
   qreal m_trackH = -1.0;
   qreal m_handleW = -1.0;

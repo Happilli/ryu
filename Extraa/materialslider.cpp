@@ -1,4 +1,5 @@
 #include "./materialslider.hpp"
+#include <QGuiApplication>
 #include <QPainter>
 #include <QPainterPath>
 #include <QQmlEngine>
@@ -38,7 +39,10 @@ MaterialSlider::MaterialSlider(QQuickItem *parent) : RyuItem(parent) {
 
   updateImplicit();
 }
-
+MaterialSlider::~MaterialSlider() {
+  if (m_cursorOverridden)
+    QGuiApplication::restoreOverrideCursor();
+}
 qreal MaterialSlider::trackHeight() const {
   return m_trackH >= 0.0 ? m_trackH : kTrackH[m_sizeStyle];
 }
@@ -185,12 +189,20 @@ void MaterialSlider::reclamp() {
     emit valueChanged();
   }
 }
-
 void MaterialSlider::setPressed(bool v) {
   if (m_pressed == v)
     return;
   m_pressed = v;
   emit pressedChanged();
+
+  if (v && !m_cursorOverridden) {
+    QGuiApplication::setOverrideCursor(QCursor(Qt::ClosedHandCursor));
+    m_cursorOverridden = true;
+  } else if (!v && m_cursorOverridden) {
+    QGuiApplication::restoreOverrideCursor();
+    m_cursorOverridden = false;
+  }
+
   m_pressAnim.stop();
   m_pressAnim.setStartValue(m_press);
   m_pressAnim.setEndValue(v ? 1.0 : 0.0);
