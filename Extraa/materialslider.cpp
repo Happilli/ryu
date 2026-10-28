@@ -119,9 +119,7 @@ void MaterialSlider::setBorderWidth(qreal v) {
   assign(m_borderWidth, std::max(0.0, v), &MaterialSlider::borderWidthChanged);
 }
 
-qreal MaterialSlider::indicatorSpace() const {
-  return m_showIndicator ? kIndicatorSpace : 0.0;
-}
+qreal MaterialSlider::indicatorSpace() const { return 0.0; }
 
 qreal MaterialSlider::length() const {
   return horizontal() ? width() : height();
