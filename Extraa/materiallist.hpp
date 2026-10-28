@@ -1,5 +1,5 @@
 #pragma once
-#include "../Core/ryuitem.hpp"
+#include "../Core/sgitem.hpp"
 #include <QColor>
 #include <QFocusEvent>
 #include <QFont>
@@ -13,7 +13,7 @@
 #include <QVariant>
 #include <QVector>
 
-class MaterialList : public MaterialItem {
+class MaterialList : public SgMaterialItem {
   Q_OBJECT
   QML_ELEMENT
 
@@ -99,8 +99,6 @@ public:
   Q_INVOKABLE bool isChecked(int i) const { return m_checked.contains(i); }
   Q_INVOKABLE void setChecked(int i, bool on);
 
-  void paint(QPainter *p) override;
-
 signals:
   void modelChanged();
   void variantChanged();
@@ -120,6 +118,7 @@ signals:
   void clicked(int index, const QVariant &item);
 
 protected:
+  void build(Ryu::Mesh &m) override;
   bool advance(qreal dt) override;
   void geometryChange(const QRectF &n, const QRectF &o) override;
   void mousePressEvent(QMouseEvent *e) override;
@@ -164,6 +163,7 @@ private:
 
   QVariantList m_raw;
   QVector<Entry> m_items;
+  int m_gen = 0;
 
   Variant m_variant = Standard;
   SelectionMode m_mode = NoSelection;

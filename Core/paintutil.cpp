@@ -10,7 +10,37 @@
 #include <cmath>
 
 namespace Ryu {
+QImage newImage(qreal w, qreal h, qreal dpr) {
+  QImage img(std::max(1, int(std::ceil(w * dpr))),
+             std::max(1, int(std::ceil(h * dpr))),
+             QImage::Format_ARGB32_Premultiplied);
+  img.setDevicePixelRatio(dpr);
+  img.fill(Qt::transparent);
+  return img;
+}
 
+QImage renderLabel(const QFont &font, const QString &text, const QColor &color,
+                   qreal w, qreal h, qreal x, qreal dpr) {
+  QImage img = newImage(w, h, dpr);
+  QPainter p(&img);
+  p.setRenderHint(QPainter::Antialiasing, true);
+  p.setRenderHint(QPainter::TextAntialiasing, true);
+  p.setRenderHint(QPainter::SmoothPixmapTransform, true);
+  drawLabel(&p, font, text, x, h / 2.0, color);
+  p.end();
+  return img;
+}
+
+QImage renderGlyph(const QFont &font, const QString &text, const QColor &color,
+                   qreal size, qreal dpr) {
+  QImage img = newImage(size, size, dpr);
+  QPainter p(&img);
+  p.setRenderHint(QPainter::Antialiasing, true);
+  p.setRenderHint(QPainter::TextAntialiasing, true);
+  drawGlyph(&p, font, text, QPointF(size / 2.0, size / 2.0), size, color);
+  p.end();
+  return img;
+}
 QColor mix(const QColor &a, const QColor &b, qreal t) {
   t = std::clamp(t, 0.0, 1.0);
   return QColor::fromRgbF(a.redF() + (b.redF() - a.redF()) * t,

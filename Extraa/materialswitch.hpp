@@ -1,12 +1,12 @@
 #pragma once
-#include "../Core/ryuitem.hpp"
+#include "../Core/sgitem.hpp"
 #include <QColor>
 #include <QFocusEvent>
 #include <QHoverEvent>
 #include <QKeyEvent>
 #include <QMouseEvent>
 
-class MaterialSwitch : public MaterialItem {
+class MaterialSwitch : public SgMaterialItem {
   Q_OBJECT
   QML_ELEMENT
 
@@ -56,8 +56,6 @@ public:
   void setIconColor(const QColor &v);
   void setCheckedIconColor(const QColor &v);
 
-  void paint(QPainter *p) override;
-
 signals:
   void checkedChanged();
   void showIconsChanged();
@@ -74,14 +72,15 @@ signals:
   void clicked();
 
 protected:
-  void hoverMoveEvent(QHoverEvent *e) override;
+  void build(Ryu::Mesh &m) override;
   bool advance(qreal dt) override;
+  void componentComplete() override;
   void mousePressEvent(QMouseEvent *e) override;
   void mouseMoveEvent(QMouseEvent *e) override;
   void mouseReleaseEvent(QMouseEvent *e) override;
   void mouseUngrabEvent() override;
   void hoverEnterEvent(QHoverEvent *e) override;
-  void componentComplete() override;
+  void hoverMoveEvent(QHoverEvent *e) override;
   void hoverLeaveEvent(QHoverEvent *e) override;
   void keyPressEvent(QKeyEvent *e) override;
   void focusOutEvent(QFocusEvent *e) override;
@@ -91,8 +90,8 @@ private:
   void setHovered(bool v);
   void retarget(bool immediate = false);
   void userSet(bool on);
-
   bool overTrack(const QPointF &pt) const;
+
   bool m_checked = false;
   bool m_showIcons = false;
   bool m_pressed = false;

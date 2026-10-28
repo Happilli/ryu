@@ -1,8 +1,6 @@
 #include "./materialradiobutton.hpp"
 #include "../Core/paintutil.hpp"
 #include <QFontMetricsF>
-#include <QPainter>
-#include <QPen>
 #include <algorithm>
 #include <cmath>
 
@@ -21,7 +19,7 @@ constexpr qreal kSelStiffness = 0.8;
 } // namespace
 
 MaterialRadioButton::MaterialRadioButton(QQuickItem *parent)
-    : MaterialItem(parent, 520.0, 0.5) {
+    : SgMaterialItem(parent, 520.0, 0.5) {
   setAcceptedMouseButtons(Qt::LeftButton);
   setAcceptHoverEvents(true);
   setActiveFocusOnTab(true);
@@ -30,7 +28,7 @@ MaterialRadioButton::MaterialRadioButton(QQuickItem *parent)
 }
 
 void MaterialRadioButton::componentComplete() {
-  MaterialItem::componentComplete();
+  SgMaterialItem::componentComplete();
   if (m_checked)
     uncheckPeers();
   retarget(true);
@@ -219,12 +217,12 @@ void MaterialRadioButton::mouseReleaseEvent(QMouseEvent *e) {
 void MaterialRadioButton::mouseUngrabEvent() { setPressed(false); }
 
 void MaterialRadioButton::hoverEnterEvent(QHoverEvent *e) {
-  QQuickPaintedItem::hoverEnterEvent(e);
+  QQuickItem::hoverEnterEvent(e);
   hoverMoveEvent(e);
 }
 
 void MaterialRadioButton::hoverMoveEvent(QHoverEvent *e) {
-  QQuickPaintedItem::hoverMoveEvent(e);
+  QQuickItem::hoverMoveEvent(e);
   if (!isEnabled())
     return;
   const bool over = overCircle(e->position());
@@ -233,7 +231,7 @@ void MaterialRadioButton::hoverMoveEvent(QHoverEvent *e) {
 }
 
 void MaterialRadioButton::hoverLeaveEvent(QHoverEvent *e) {
-  QQuickPaintedItem::hoverLeaveEvent(e);
+  QQuickItem::hoverLeaveEvent(e);
   setHovered(false);
   setHand(false);
 }
@@ -267,17 +265,15 @@ void MaterialRadioButton::keyPressEvent(QKeyEvent *e) {
 }
 
 void MaterialRadioButton::focusOutEvent(QFocusEvent *e) {
-  QQuickPaintedItem::focusOutEvent(e);
+  QQuickItem::focusOutEvent(e);
   m_keyFocus = false;
   update();
 }
 
-void MaterialRadioButton::paint(QPainter *p) {
+void MaterialRadioButton::build(Ryu::Mesh &m) {
   const qreal w = width(), h = height();
   if (w <= 0.0 || h <= 0.0)
     return;
-
-  preparePainter(p);
 
   const QPointF c(kArea / 2.0, h / 2.0);
   const qreal sel = std::max(0.0, m_sel.x);
@@ -291,25 +287,16 @@ void MaterialRadioButton::paint(QPainter *p) {
 
   const qreal layer =
       Ryu::stateLayer(m_hovered, m_pressed || (m_keyFocus && hasActiveFocus()));
-  p->setPen(Qt::NoPen);
-  if (layer > 0.0) {
-    p->setBrush(Ryu::withAlpha(layerBase, layer));
-    p->drawEllipse(c, kArea / 2.0, kArea / 2.0);
-  }
+  if (layer > 0.0)
+    m.fillCircle(c, kArea / 2.0, Ryu::withAlpha(layerBase, layer));
 
-  const qreal ringR =
-      kRing / 2.0 * (1.0 - kPressShrink * std::min(press, 1.4)) - kStroke / 2.0;
-  p->setBrush(Qt::NoBrush);
-  p->setPen(QPen(Ryu::mix(outline, accent, selC), kStroke));
-  p->drawEllipse(c, ringR, ringR);
+  const qreal ringR = kRing / 2.0 * (1.0 - kPressShrink * std::min(press, 1.4));
+  m.strokeCircle(c, ringR, m.snapStroke(kStroke),
+                 Ryu::mix(outline, accent, selC));
 
   const qreal dotR = (kDot / 2.0 + kDotPress * std::min(press, 1.4)) * sel;
-  if (dotR > 0.05) {
-    p->setPen(Qt::NoPen);
-    p->setBrush(accent);
-    p->drawEllipse(c, dotR, dotR);
-  }
+  if (dotR > 0.05)
+    m.fillCircle(c, dotR, accent);
 
-  p->setPen(Qt::NoPen);
-  Ryu::drawLabel(p, labelFont(), m_text, kArea + kGap, c.y(), m_textColor);
+  textLayer(0, labelFont(), m_text, m_textColor, kArea + kGap, c.y());
 }

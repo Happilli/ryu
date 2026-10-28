@@ -1,6 +1,6 @@
 #pragma once
 #include "../Core/paintutil.hpp"
-#include "../Core/ryuitem.hpp"
+#include "../Core/sgitem.hpp"
 #include <QColor>
 #include <QFocusEvent>
 #include <QFont>
@@ -12,7 +12,7 @@
 #include <QTimer>
 #include <QUrl>
 
-class MaterialSearchBox : public MaterialItem {
+class MaterialSearchBox : public SgMaterialItem {
   Q_OBJECT
   QML_ELEMENT
 
@@ -119,7 +119,6 @@ public:
   Q_INVOKABLE void selectAll();
 
   QVariant inputMethodQuery(Qt::InputMethodQuery query) const override;
-  void paint(QPainter *p) override;
 
 signals:
   void textChanged();
@@ -153,6 +152,7 @@ signals:
   void trailingClicked();
 
 protected:
+  void build(Ryu::Mesh &m) override;
   bool advance(qreal dt) override;
   void geometryChange(const QRectF &n, const QRectF &o) override;
   void mousePressEvent(QMouseEvent *e) override;
@@ -196,7 +196,10 @@ private:
   int selEnd() const { return qMax(m_cursor, m_anchor); }
   QString selectedText() const;
 
-  const QImage &icon(IconSlot &s, const QUrl &src, qreal size, qreal dpr);
+  QImage icon(IconSlot &s, const QUrl &src, qreal size, const QColor &color,
+              qreal dpr);
+  void iconLayer(Ryu::Mesh &m, int slot, IconSlot &s, const QUrl &src, qreal cx,
+                 qreal cy, qreal size);
 
   void commit(const QString &t, int cur, bool user);
   void insertText(QString s);

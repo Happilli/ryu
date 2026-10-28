@@ -1,9 +1,13 @@
 #include "./materialcheckbox.hpp"
 #include "../Core/paintutil.hpp"
 #include <QFontMetricsF>
+#include <QLineF>
+#include <QList>
 #include <QPainter>
-#include <QPainterPath>
-#include <QPen>
+#include <QQuickWindow>
+#include <QSGNode>
+#include <QSGSimpleTextureNode>
+#include <QSGTexture>
 #include <algorithm>
 #include <cmath>
 
@@ -20,13 +24,14 @@ constexpr qreal kFontPx = 16.0;
 constexpr qreal kDashHalf = 4.5;
 constexpr qreal kPressStiffness = 1.4;
 constexpr qreal kMarkStiffness = 0.85;
+constexpr qreal kTextPad = 1.0;
 const QPointF kCheckA(-4.5, 0.5);
 const QPointF kCheckB(-1.5, 3.5);
 const QPointF kCheckC(4.5, -3.5);
 } // namespace
 
 MaterialCheckbox::MaterialCheckbox(QQuickItem *parent)
-    : MaterialItem(parent, 520.0, 0.55) {
+    : SgMaterialItem(parent, 520.0, 0.55) {
   setAcceptedMouseButtons(Qt::LeftButton);
   setAcceptHoverEvents(true);
   setActiveFocusOnTab(true);
@@ -35,7 +40,7 @@ MaterialCheckbox::MaterialCheckbox(QQuickItem *parent)
 }
 
 void MaterialCheckbox::componentComplete() {
-  MaterialItem::componentComplete();
+  SgMaterialItem::componentComplete();
   retarget(true);
   update();
 }
@@ -180,7 +185,7 @@ void MaterialCheckbox::mouseReleaseEvent(QMouseEvent *e) {
 void MaterialCheckbox::mouseUngrabEvent() { setPressed(false); }
 
 void MaterialCheckbox::hoverEnterEvent(QHoverEvent *e) {
-  QQuickPaintedItem::hoverEnterEvent(e);
+  QQuickItem::hoverEnterEvent(e);
   if (isEnabled()) {
     setHovered(true);
     setHand(true);
@@ -188,17 +193,13 @@ void MaterialCheckbox::hoverEnterEvent(QHoverEvent *e) {
 }
 
 void MaterialCheckbox::hoverLeaveEvent(QHoverEvent *e) {
-  QQuickPaintedItem::hoverLeaveEvent(e);
+  QQuickItem::hoverLeaveEvent(e);
   setHovered(false);
   setHand(false);
 }
 
 void MaterialCheckbox::keyPressEvent(QKeyEvent *e) {
-  if (!isEnabled()) {
-    e->ignore();
-    return;
-  }
-  if (e->key() != Qt::Key_Space) {
+  if (!isEnabled() || e->key() != Qt::Key_Space) {
     e->ignore();
     return;
   }
@@ -210,18 +211,56 @@ void MaterialCheckbox::keyPressEvent(QKeyEvent *e) {
 }
 
 void MaterialCheckbox::focusOutEvent(QFocusEvent *e) {
-  QQuickPaintedItem::focusOutEvent(e);
+  QQuickItem::focusOutEvent(e);
   m_keyFocus = false;
   update();
 }
 
-void MaterialCheckbox::paint(QPainter *p) {
+QSGNode *MaterialCheckbox::updatePaintNode(QSGNode *old,
+                                           UpdatePaintNodeData *d) {
+  if (!old) {
+    m_textNode = nullptr;
+    m_textLayer.shown.clear();
+  }
+  QSGNode *root = SgMaterialItem::updatePaintNode(old, d);
+  syncLayer(root, m_textNode, m_textLayer);
+  return root;
+}
+
+void MaterialCheckbox::syncLayer(QSGNode *root, QSGSimpleTextureNode *&node,
+                                 Layer &l) {
+  if (!l.on || l.img.isNull() || !window()) {
+    if (node) {
+      root->removeChildNode(node);
+      delete node;
+      node = nullptr;
+    }
+    return;
+  }
+
+  if (!node) {
+    node = new QSGSimpleTextureNode;
+    node->setOwnsTexture(true);
+    node->setFiltering(QSGTexture::Linear);
+    root->appendChildNode(node);
+    l.shown.clear();
+  }
+
+  if (l.shown != l.key) {
+    node->setTexture(window()->createTextureFromImage(l.img));
+    l.shown = l.key;
+  }
+  node->setRect(l.rect);
+}
+
+void MaterialCheckbox::build(Ryu::Mesh &m) {
+  m_textLayer.on = false;
+
   const qreal w = width(), h = height();
   if (w <= 0.0 || h <= 0.0)
     return;
 
-  preparePainter(p);
-
+  const qreal dpr = m.dpr();
   const QPointF c(kArea / 2.0, h / 2.0);
   const qreal fill = std::clamp(m_fill.x, 0.0, 1.0);
   const qreal mark = std::clamp(m_mark.x, 0.0, 1.0);
@@ -235,24 +274,20 @@ void MaterialCheckbox::paint(QPainter *p) {
 
   const qreal layer =
       Ryu::stateLayer(m_hovered, m_pressed || (m_keyFocus && hasActiveFocus()));
-  p->setPen(Qt::NoPen);
-  if (layer > 0.0) {
-    p->setBrush(Ryu::withAlpha(layerBase, layer));
-    p->drawEllipse(c, kArea / 2.0, kArea / 2.0);
-  }
+  if (layer > 0.0)
+    m.fillCircle(c, kArea / 2.0, Ryu::withAlpha(layerBase, layer));
 
   const qreal side = kBox * (1.0 - kPressShrink * std::min(press, 1.4));
   const qreal radius =
       kRadius + (kPressRadius - kRadius) * std::min(press, 1.0);
   const QRectF box(c.x() - side / 2.0, c.y() - side / 2.0, side, side);
-  QPainterPath path;
-  path.addRoundedRect(box, radius, radius);
 
-  if (fill > 0.001) {
-    p->setBrush(Ryu::withAlpha(accent, accent.alphaF() * fill));
-    p->drawPath(path);
-  }
-  Ryu::strokeInside(p, path, Ryu::mix(outline, accent, fill), kStroke);
+  if (fill > 0.001)
+    m.fillRoundedRect(box, radius, radius, radius, radius,
+                      Ryu::withAlpha(accent, accent.alphaF() * fill));
+
+  m.strokeRoundedRect(box, radius, radius, radius, radius,
+                      m.snapStroke(kStroke), Ryu::mix(outline, accent, fill));
 
   const qreal k = side / kBox;
 
@@ -261,34 +296,56 @@ void MaterialCheckbox::paint(QPainter *p) {
     const qreal l2 = QLineF(kCheckB, kCheckC).length();
     const qreal d = mark * (l1 + l2);
 
-    QPainterPath check;
-    check.moveTo(kCheckA);
-    if (d <= l1) {
-      check.lineTo(kCheckA + (kCheckB - kCheckA) * (d / l1));
-    } else {
-      check.lineTo(kCheckB);
-      check.lineTo(kCheckB + (kCheckC - kCheckB) * ((d - l1) / l2));
-    }
+    auto map = [&](const QPointF &p) { return c + p * k; };
 
-    p->save();
-    p->translate(c);
-    p->scale(k, k);
-    p->setBrush(Qt::NoBrush);
-    p->setPen(QPen(m_checkmarkColor, kMarkW, Qt::SolidLine, Qt::RoundCap,
-                   Qt::RoundJoin));
-    p->drawPath(check);
-    p->restore();
+    QList<QPointF> pts;
+    pts.append(map(kCheckA));
+    if (d <= l1) {
+      pts.append(map(kCheckA + (kCheckB - kCheckA) * (d / l1)));
+    } else {
+      pts.append(map(kCheckB));
+      pts.append(map(kCheckB + (kCheckC - kCheckB) * ((d - l1) / l2)));
+    }
+    m.polyline(pts, kMarkW * k, m_checkmarkColor);
   }
 
   if (dash > 0.01) {
     const qreal half = kDashHalf * dash * k;
-    p->save();
-    p->setBrush(Qt::NoBrush);
-    p->setPen(QPen(m_checkmarkColor, kMarkW * k, Qt::SolidLine, Qt::RoundCap));
-    p->drawLine(QPointF(c.x() - half, c.y()), QPointF(c.x() + half, c.y()));
-    p->restore();
+    m.line(QPointF(c.x() - half, c.y()), QPointF(c.x() + half, c.y()),
+           kMarkW * k, m_checkmarkColor);
   }
 
-  p->setPen(Qt::NoPen);
-  Ryu::drawLabel(p, labelFont(), m_text, kArea + kGap, c.y(), m_textColor);
+  if (m_text.isEmpty())
+    return;
+
+  const qreal fade = isEnabled() ? 1.0 : Ryu::kDisabledOpacity;
+  const QColor tc = Ryu::withAlpha(m_textColor, m_textColor.alphaF() * fade);
+  const QFont lf = labelFont();
+  const QFontMetricsF fm(lf);
+  const qreal iw = std::ceil(textWidth()) + 2.0 * kTextPad;
+  const qreal ih = std::ceil(fm.height()) + 2.0 * kTextPad;
+
+  const QString key =
+      QStringLiteral("t|%1|%2|%3|%4|%5")
+          .arg(m_text, m_font.toString(), tc.name(QColor::HexArgb))
+          .arg(m_fontWeight)
+          .arg(dpr);
+  if (m_textLayer.key != key) {
+    m_textLayer.key = key;
+    const int pw = std::max(1, int(std::ceil(iw * dpr)));
+    const int ph = std::max(1, int(std::ceil(ih * dpr)));
+    QImage img(pw, ph, QImage::Format_ARGB32_Premultiplied);
+    img.setDevicePixelRatio(dpr);
+    img.fill(Qt::transparent);
+    QPainter p(&img);
+    p.setRenderHint(QPainter::Antialiasing, true);
+    p.setRenderHint(QPainter::TextAntialiasing, true);
+    Ryu::drawLabel(&p, lf, m_text, kTextPad, ih / 2.0, tc);
+    p.end();
+    m_textLayer.img = img;
+  }
+
+  m_textLayer.rect =
+      QRectF(m.snap(kArea + kGap - kTextPad), m.snap(c.y() - ih / 2.0), iw, ih);
+  m_textLayer.on = true;
 }

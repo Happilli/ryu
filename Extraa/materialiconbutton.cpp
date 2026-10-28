@@ -1,11 +1,13 @@
 #include "./materialiconbutton.hpp"
 #include "../Core/sizes.hpp"
 #include <QPainter>
-#include <QPainterPath>
-#include <QPen>
 #include <QQmlEngine>
 #include <QQuickWindow>
+#include <QSGNode>
+#include <QSGSimpleTextureNode>
+#include <QSGTexture>
 #include <algorithm>
+#include <cmath>
 
 namespace {
 constexpr qreal kWidth[3][5] = {{32.0, 40.0, 56.0, 96.0, 136.0},
@@ -13,10 +15,11 @@ constexpr qreal kWidth[3][5] = {{32.0, 40.0, 56.0, 96.0, 136.0},
                                 {40.0, 52.0, 72.0, 128.0, 184.0}};
 constexpr qreal kBorder[] = {1.0, 1.0, 1.0, 2.0, 3.0};
 constexpr qreal kPressShrink = 0.06;
+constexpr qreal kPressStiffness = 1.4;
 } // namespace
 
 MaterialIconButton::MaterialIconButton(QQuickItem *parent)
-    : MaterialItem(parent, 520.0, 0.5) {
+    : SgMaterialItem(parent, 520.0, 0.5) {
   setAcceptedMouseButtons(Qt::LeftButton);
   setAcceptHoverEvents(true);
   setActiveFocusOnTab(true);
@@ -91,7 +94,7 @@ void MaterialIconButton::retarget(bool immediate) {
 
 bool MaterialIconButton::advance(qreal dt) {
   bool active = step(m_round, dt);
-  active |= step(m_press, dt, 0.001, 1.4);
+  active |= step(m_press, dt, 0.001, kPressStiffness);
   return active;
 }
 
@@ -125,8 +128,10 @@ void MaterialIconButton::setChecked(bool v) {
 }
 
 void MaterialIconButton::setIconSource(const QUrl &v) {
-  if (assign(m_iconSource, v, &MaterialIconButton::iconSourceChanged))
+  if (assign(m_iconSource, v, &MaterialIconButton::iconSourceChanged)) {
     m_iconPath.clear();
+    m_imgLayer.key.clear();
+  }
 }
 
 void MaterialIconButton::setIconText(const QString &v) {
@@ -221,7 +226,7 @@ void MaterialIconButton::mouseReleaseEvent(QMouseEvent *e) {
 void MaterialIconButton::mouseUngrabEvent() { setPressed(false); }
 
 void MaterialIconButton::hoverEnterEvent(QHoverEvent *e) {
-  QQuickPaintedItem::hoverEnterEvent(e);
+  QQuickItem::hoverEnterEvent(e);
   if (isEnabled()) {
     setHovered(true);
     setHand(true);
@@ -229,7 +234,7 @@ void MaterialIconButton::hoverEnterEvent(QHoverEvent *e) {
 }
 
 void MaterialIconButton::hoverLeaveEvent(QHoverEvent *e) {
-  QQuickPaintedItem::hoverLeaveEvent(e);
+  QQuickItem::hoverLeaveEvent(e);
   setHovered(false);
   setHand(false);
 }
@@ -256,73 +261,131 @@ void MaterialIconButton::keyPressEvent(QKeyEvent *e) {
 }
 
 void MaterialIconButton::focusOutEvent(QFocusEvent *e) {
-  QQuickPaintedItem::focusOutEvent(e);
+  QQuickItem::focusOutEvent(e);
   m_keyFocus = false;
   update();
 }
 
-void MaterialIconButton::paint(QPainter *p) {
+QSGNode *MaterialIconButton::updatePaintNode(QSGNode *old,
+                                             UpdatePaintNodeData *d) {
+  if (!old) {
+    m_imgNode = nullptr;
+    m_glyphNode = nullptr;
+    m_imgLayer.shown.clear();
+    m_glyphLayer.shown.clear();
+  }
+  QSGNode *root = SgMaterialItem::updatePaintNode(old, d);
+  syncLayer(root, m_imgNode, m_imgLayer);
+  syncLayer(root, m_glyphNode, m_glyphLayer);
+  return root;
+}
+
+void MaterialIconButton::syncLayer(QSGNode *root, QSGSimpleTextureNode *&node,
+                                   Layer &l) {
+  if (!l.on || l.img.isNull() || !window()) {
+    if (node) {
+      root->removeChildNode(node);
+      delete node;
+      node = nullptr;
+    }
+    return;
+  }
+
+  if (!node) {
+    node = new QSGSimpleTextureNode;
+    node->setOwnsTexture(true);
+    node->setFiltering(QSGTexture::Linear);
+    root->appendChildNode(node);
+    l.shown.clear();
+  }
+
+  if (l.shown != l.key) {
+    node->setTexture(window()->createTextureFromImage(l.img));
+    l.shown = l.key;
+  }
+  node->setRect(l.rect);
+}
+
+void MaterialIconButton::build(Ryu::Mesh &m) {
+  m_imgLayer.on = false;
+  m_glyphLayer.on = false;
+
   const qreal w = width(), h = height();
   if (w <= 0.0 || h <= 0.0)
     return;
 
-  preparePainter(p);
-
+  const qreal dpr = m.dpr();
   const qreal scale = 1.0 - kPressShrink * m_press.x;
-  p->translate(w / 2.0, h / 2.0);
-  p->scale(scale, scale);
-  p->translate(-w / 2.0, -h / 2.0);
+  const QPointF c(w / 2.0, h / 2.0);
+  const QRectF rect(c.x() - w * scale / 2.0, c.y() - h * scale / 2.0, w * scale,
+                    h * scale);
 
   const qreal full = std::min(w, h) / 2.0;
   const qreal sq = std::min(Ryu::kBtnSquareR[m_sizeStyle], full);
-  const qreal radius = std::max(0.0, sq + (full - sq) * m_round.x);
-  const QRectF rect(0.0, 0.0, w, h);
-
-  QPainterPath path;
-  path.addRoundedRect(rect, radius, radius);
+  const qreal radius = std::max(0.0, sq + (full - sq) * m_round.x) * scale;
 
   const QColor bg = containerColor();
   const QColor fg = contentColor();
 
-  p->setPen(Qt::NoPen);
-  if (bg.alpha() > 0) {
-    p->setBrush(bg);
-    p->drawPath(path);
-  }
+  if (bg.alpha() > 0)
+    m.fillRoundedRect(rect, radius, radius, radius, radius, bg);
 
   const qreal bw = resolvedBorderWidth();
-  if (m_type == Outlined && !m_checked && bw > 0.0 &&
-      m_borderColor.alpha() > 0) {
-    const qreal half = bw / 2.0;
-    const qreal br = std::max(0.0, radius - half);
-    p->setBrush(Qt::NoBrush);
-    p->setPen(QPen(m_borderColor, bw));
-    p->drawRoundedRect(rect.adjusted(half, half, -half, -half), br, br);
-    p->setPen(Qt::NoPen);
-  }
+  if (m_type == Outlined && !m_checked && bw > 0.0 && m_borderColor.alpha() > 0)
+    m.strokeRoundedRect(rect, radius, radius, radius, radius, m.snapStroke(bw),
+                        m_borderColor);
 
   const qreal layer =
       Ryu::stateLayer(m_hovered, m_pressed || (m_keyFocus && hasActiveFocus()));
-  if (layer > 0.0) {
-    p->setBrush(Ryu::withAlpha(fg, layer));
-    p->drawPath(path);
-  }
+  if (layer > 0.0)
+    m.fillRoundedRect(rect, radius, radius, radius, radius,
+                      Ryu::withAlpha(fg, layer));
 
   const qreal iconSz = resolvedIconSize();
   if (iconSz <= 0.0)
     return;
 
+  const qreal fade = isEnabled() ? 1.0 : Ryu::kDisabledOpacity;
+  const QColor ic = Ryu::withAlpha(fg, fg.alphaF() * fade);
+  const qreal is = iconSz * scale;
+  const QRectF ir(c.x() - is / 2.0, c.y() - is / 2.0, is, is);
+
   if (m_iconSource.isValid() && !m_iconSource.isEmpty()) {
     if (m_iconPath.isEmpty())
       m_iconPath = Ryu::resolveUrl(qmlContext(this), m_iconSource);
-    const QImage &img = m_iconCache.get(
-        m_iconPath, iconSz, window() ? window()->devicePixelRatio() : 1.0, fg);
-    if (!img.isNull())
-      p->drawImage(QPointF(w / 2.0 - iconSz / 2.0, h / 2.0 - iconSz / 2.0),
-                   img);
+    const QString key = QStringLiteral("i|%1|%2|%3|%4")
+                            .arg(m_iconPath, ic.name(QColor::HexArgb))
+                            .arg(iconSz)
+                            .arg(dpr);
+    if (m_imgLayer.key != key) {
+      m_imgLayer.key = key;
+      m_imgLayer.img = m_iconCache.get(m_iconPath, iconSz, dpr, ic);
+    }
+    m_imgLayer.rect = ir;
+    m_imgLayer.on = true;
   }
 
-  if (!m_iconText.isEmpty())
-    Ryu::drawGlyph(p, m_iconFont, m_iconText, QPointF(w / 2.0, h / 2.0), iconSz,
-                   fg);
+  if (!m_iconText.isEmpty()) {
+    const QString key =
+        QStringLiteral("g|%1|%2|%3|%4|%5")
+            .arg(m_iconText, m_iconFont.toString(), ic.name(QColor::HexArgb))
+            .arg(iconSz)
+            .arg(dpr);
+    if (m_glyphLayer.key != key) {
+      m_glyphLayer.key = key;
+      const int px = std::max(1, int(std::ceil(iconSz * dpr)));
+      QImage img(px, px, QImage::Format_ARGB32_Premultiplied);
+      img.setDevicePixelRatio(dpr);
+      img.fill(Qt::transparent);
+      QPainter p(&img);
+      p.setRenderHint(QPainter::Antialiasing, true);
+      p.setRenderHint(QPainter::TextAntialiasing, true);
+      Ryu::drawGlyph(&p, m_iconFont, m_iconText,
+                     QPointF(iconSz / 2.0, iconSz / 2.0), iconSz, ic);
+      p.end();
+      m_glyphLayer.img = img;
+    }
+    m_glyphLayer.rect = ir;
+    m_glyphLayer.on = true;
+  }
 }

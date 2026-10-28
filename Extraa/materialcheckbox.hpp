@@ -1,14 +1,18 @@
 #pragma once
-#include "../Core/ryuitem.hpp"
+#include "../Core/sgitem.hpp"
 #include <QColor>
 #include <QFocusEvent>
 #include <QFont>
 #include <QHoverEvent>
+#include <QImage>
 #include <QKeyEvent>
 #include <QMouseEvent>
+#include <QRectF>
 #include <QString>
 
-class MaterialCheckbox : public MaterialItem {
+class QSGSimpleTextureNode;
+
+class MaterialCheckbox : public SgMaterialItem {
   Q_OBJECT
   QML_ELEMENT
 
@@ -66,8 +70,6 @@ public:
   void setTextColor(const QColor &v);
   void setErrorColor(const QColor &v);
 
-  void paint(QPainter *p) override;
-
 signals:
   void checkedChanged();
   void checkStateChanged();
@@ -86,7 +88,9 @@ signals:
   void clicked();
 
 protected:
+  void build(Ryu::Mesh &m) override;
   bool advance(qreal dt) override;
+  QSGNode *updatePaintNode(QSGNode *old, UpdatePaintNodeData *d) override;
   void componentComplete() override;
   void mousePressEvent(QMouseEvent *e) override;
   void mouseReleaseEvent(QMouseEvent *e) override;
@@ -97,6 +101,14 @@ protected:
   void focusOutEvent(QFocusEvent *e) override;
 
 private:
+  struct Layer {
+    QImage img;
+    QRectF rect;
+    QString key;
+    QString shown;
+    bool on = false;
+  };
+
   QFont labelFont() const;
   qreal textWidth() const;
   void updateImplicit();
@@ -105,6 +117,7 @@ private:
   void setHovered(bool v);
   bool applyState(CheckState s, bool user);
   void activate();
+  void syncLayer(QSGNode *root, QSGSimpleTextureNode *&node, Layer &l);
 
   CheckState m_state = Unchecked;
   bool m_error = false;
@@ -126,4 +139,7 @@ private:
   Spring m_mark;
   Spring m_dash;
   Spring m_press;
+
+  Layer m_textLayer;
+  QSGSimpleTextureNode *m_textNode = nullptr;
 };

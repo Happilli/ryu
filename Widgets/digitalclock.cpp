@@ -3,6 +3,9 @@
 #include <QList>
 #include <QPainter>
 #include <QPen>
+#include <QQuickWindow>
+#include <QSGSimpleTextureNode>
+#include <QSGTexture>
 #include <QTime>
 #include <QTransform>
 #include <algorithm>
@@ -61,7 +64,7 @@ void mapGroup(Group &g, const QTransform &tf) {
 }
 } // namespace
 
-DigitalClock::DigitalClock(QQuickItem *parent) : RyuItem(parent) {
+DigitalClock::DigitalClock(QQuickItem *parent) : SgItem(parent) {
   m_timer.setSingleShot(true);
   m_timer.setTimerType(Qt::CoarseTimer);
   connect(&m_timer, &QTimer::timeout, this, &DigitalClock::refresh);
@@ -69,15 +72,27 @@ DigitalClock::DigitalClock(QQuickItem *parent) : RyuItem(parent) {
 }
 
 void DigitalClock::componentComplete() {
-  RyuItem::componentComplete();
+  SgItem::componentComplete();
   syncTimer();
 }
 
 void DigitalClock::itemChange(ItemChange change, const ItemChangeData &data) {
-  RyuItem::itemChange(change, data);
+  SgItem::itemChange(change, data);
+  if (change == ItemEnabledHasChanged || change == ItemSceneChange)
+    m_imgStale = true;
   if (change == ItemVisibleHasChanged || change == ItemSceneChange)
     syncTimer();
 }
+
+void DigitalClock::geometryChange(const QRectF &n, const QRectF &o) {
+  SgItem::geometryChange(n, o);
+  if (n.size() != o.size()) {
+    m_imgStale = true;
+    update();
+  }
+}
+
+void DigitalClock::propertyAssigned() { m_imgStale = true; }
 
 bool DigitalClock::timerWanted() const {
   return m_running && m_testTime.isEmpty() && isComponentComplete() &&
@@ -117,6 +132,7 @@ void DigitalClock::refresh() {
     m_minutes = mm;
     m_period = per;
     m_dirty = true;
+    m_imgStale = true;
     emit timeChanged();
     update();
   }
@@ -333,35 +349,79 @@ void DigitalClock::rebuild() {
     rebuildHorizontal(f);
 }
 
-void DigitalClock::paint(QPainter *p) {
+QImage DigitalClock::render(qreal dpr) {
   if (width() <= 0.0 || height() <= 0.0)
-    return;
+    return {};
   if (stale())
     rebuild();
   if (m_pieces.isEmpty())
-    return;
+    return {};
 
-  preparePainter(p);
+  const int pw = std::max(1, int(std::ceil(width() * dpr)));
+  const int ph = std::max(1, int(std::ceil(height() * dpr)));
+  QImage img(pw, ph, QImage::Format_ARGB32_Premultiplied);
+  img.setDevicePixelRatio(dpr);
+  img.fill(Qt::transparent);
+
+  QPainter p(&img);
+  p.setRenderHint(QPainter::Antialiasing, true);
+  p.setRenderHint(QPainter::SmoothPixmapTransform, true);
+  if (!isEnabled())
+    p.setOpacity(Ryu::kDisabledOpacity);
+
   const qreal s = width() / m_bw;
-  p->scale(s, s);
+  p.scale(s, s);
 
   for (const Piece &pc : std::as_const(m_pieces)) {
     if (pc.cut > kMinCut) {
-      p->save();
-      p->setCompositionMode(QPainter::CompositionMode_Clear);
-      p->setOpacity(1.0);
-      p->setBrush(Qt::black);
-      p->setPen(
+      p.save();
+      p.setCompositionMode(QPainter::CompositionMode_Clear);
+      p.setOpacity(1.0);
+      p.setBrush(Qt::black);
+      p.setPen(
           QPen(Qt::black, pc.cut, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
-      p->drawPath(pc.path);
-      p->restore();
+      p.drawPath(pc.path);
+      p.restore();
     }
-    p->setPen(Qt::NoPen);
-    p->setBrush(m_color);
-    p->drawPath(pc.path);
+    p.setPen(Qt::NoPen);
+    p.setBrush(m_color);
+    p.drawPath(pc.path);
   }
+  p.end();
+  return img;
 }
 
+QSGNode *DigitalClock::updatePaintNode(QSGNode *old, UpdatePaintNodeData *) {
+  auto *node = static_cast<QSGSimpleTextureNode *>(old);
+
+  if (width() <= 0.0 || height() <= 0.0 || !window()) {
+    delete node;
+    return nullptr;
+  }
+
+  const qreal dpr = window()->effectiveDevicePixelRatio();
+
+  if (!node) {
+    node = new QSGSimpleTextureNode;
+    node->setOwnsTexture(true);
+    node->setFiltering(QSGTexture::Linear);
+    m_imgStale = true;
+  }
+
+  if (m_imgStale || dpr != m_imgDpr) {
+    const QImage img = render(dpr);
+    if (img.isNull()) {
+      delete node;
+      return nullptr;
+    }
+    node->setTexture(window()->createTextureFromImage(img));
+    m_imgDpr = dpr;
+    m_imgStale = false;
+  }
+
+  node->setRect(QRectF(0.0, 0.0, width(), height()));
+  return node;
+}
 void DigitalClock::setOrientation(Orientation v) {
   if (assign(m_orientation, v, &DigitalClock::orientationChanged))
     m_dirty = true;

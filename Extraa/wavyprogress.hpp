@@ -1,11 +1,11 @@
 #pragma once
-#include "../Core/ryuitem.hpp"
+#include "../Core/sgitem.hpp"
 #include <QColor>
 #include <QElapsedTimer>
 #include <QMetaObject>
 #include <QQuickWindow>
 
-class WavyProgress : public RyuItem {
+class WavyProgress : public SgItem {
   Q_OBJECT
   QML_ELEMENT
 
@@ -55,8 +55,6 @@ public:
   void setStrokeWidth(qreal v);
   void setGap(qreal v);
 
-  void paint(QPainter *p) override;
-
 signals:
   void styleChanged();
   void progressChanged();
@@ -70,6 +68,7 @@ signals:
   void gapChanged();
 
 protected:
+  void build(Ryu::Mesh &m) override;
   void componentComplete() override;
   void itemChange(ItemChange change, const ItemChangeData &data) override;
   void geometryChange(const QRectF &n, const QRectF &o) override;
@@ -77,11 +76,10 @@ protected:
 
 private:
   void syncFrames(QQuickWindow *w);
-  void updateTexture(QQuickWindow *w);
   void onFrame();
   void segment(qreal &a, qreal &b) const;
-  void paintLinear(QPainter *p, qreal a, qreal b);
-  void paintCircular(QPainter *p, qreal a, qreal b);
+  void buildLinear(Ryu::Mesh &m, qreal a, qreal b);
+  void buildCircular(Ryu::Mesh &m, qreal a, qreal b);
 
   Style m_style = Linear;
   qreal m_progress = 0.0;

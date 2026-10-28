@@ -42,7 +42,13 @@ void drawGlyph(QPainter *p, const QFont &font, const QString &text,
 
 void drawLabel(QPainter *p, const QFont &font, const QString &text, qreal x,
                qreal cy, const QColor &color);
+QImage newImage(qreal w, qreal h, qreal dpr);
 
+QImage renderLabel(const QFont &font, const QString &text, const QColor &color,
+                   qreal w, qreal h, qreal x, qreal dpr);
+
+QImage renderGlyph(const QFont &font, const QString &text, const QColor &color,
+                   qreal size, qreal dpr);
 void strokeInside(QPainter *p, const QPainterPath &path, const QColor &color,
                   qreal width);
 

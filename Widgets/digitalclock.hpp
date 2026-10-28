@@ -1,13 +1,14 @@
 #pragma once
-#include "../Core/ryuitem.hpp"
+#include "../Core/sgitem.hpp"
 #include <QColor>
 #include <QFont>
+#include <QImage>
 #include <QList>
 #include <QPainterPath>
 #include <QString>
 #include <QTimer>
 
-class DigitalClock : public RyuItem {
+class DigitalClock : public SgItem {
   Q_OBJECT
   QML_ELEMENT
 
@@ -85,8 +86,6 @@ public:
 
   Q_INVOKABLE void refresh();
 
-  void paint(QPainter *p) override;
-
 signals:
   void timeChanged();
   void orientationChanged();
@@ -106,8 +105,11 @@ signals:
   void paddingChanged();
 
 protected:
+  QSGNode *updatePaintNode(QSGNode *old, UpdatePaintNodeData *d) override;
   void componentComplete() override;
   void itemChange(ItemChange change, const ItemChangeData &data) override;
+  void geometryChange(const QRectF &n, const QRectF &o) override;
+  void propertyAssigned() override;
 
 private:
   struct Piece {
@@ -122,6 +124,7 @@ private:
   void rebuild();
   void rebuildVertical(const QFont &f);
   void rebuildHorizontal(const QFont &f);
+  QImage render(qreal dpr);
 
   QString m_hours;
   QString m_minutes;
@@ -151,6 +154,9 @@ private:
   qreal m_bh = 0.0;
   qreal m_aspect = 0.0;
   qreal m_builtW = 0.0;
+
+  bool m_imgStale = true;
+  qreal m_imgDpr = 0.0;
 
   QTimer m_timer;
 };

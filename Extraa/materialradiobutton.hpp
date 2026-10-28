@@ -1,5 +1,5 @@
 #pragma once
-#include "../Core/ryuitem.hpp"
+#include "../Core/sgitem.hpp"
 #include <QColor>
 #include <QFocusEvent>
 #include <QFont>
@@ -9,7 +9,7 @@
 #include <QMouseEvent>
 #include <QString>
 
-class MaterialRadioButton : public MaterialItem {
+class MaterialRadioButton : public SgMaterialItem {
   Q_OBJECT
   QML_ELEMENT
 
@@ -59,8 +59,6 @@ public:
   void setTextColor(const QColor &v);
   void setErrorColor(const QColor &v);
 
-  void paint(QPainter *p) override;
-
 signals:
   void checkedChanged();
   void groupChanged();
@@ -78,16 +76,17 @@ signals:
   void clicked();
 
 protected:
+  void build(Ryu::Mesh &m) override;
   bool advance(qreal dt) override;
   void componentComplete() override;
   void mousePressEvent(QMouseEvent *e) override;
   void mouseReleaseEvent(QMouseEvent *e) override;
   void mouseUngrabEvent() override;
   void hoverEnterEvent(QHoverEvent *e) override;
+  void hoverMoveEvent(QHoverEvent *e) override;
   void hoverLeaveEvent(QHoverEvent *e) override;
   void keyPressEvent(QKeyEvent *e) override;
   void focusOutEvent(QFocusEvent *e) override;
-  void hoverMoveEvent(QHoverEvent *e) override;
 
 private:
   bool overCircle(const QPointF &pt) const;

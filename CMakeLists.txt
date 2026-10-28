@@ -13,12 +13,18 @@ qt_policy(SET QTP0001 NEW)
 add_library(RyuCore STATIC
     Core/paintutil.cpp
     Core/paintutil.hpp
+    Core/sgitem.cpp
+    Core/sgitem.hpp
     Core/sizes.hpp
     Core/spring.hpp
 )
-set_target_properties(RyuCore PROPERTIES POSITION_INDEPENDENT_CODE ON)
+set_target_properties(RyuCore PROPERTIES
+    POSITION_INDEPENDENT_CODE ON
+    AUTOMOC ON
+)
 target_include_directories(RyuCore PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(RyuCore PUBLIC Qt6::Core Qt6::Gui Qt6::Qml Qt6::Quick)
+qt_extract_metatypes(RyuCore)
 
 function(ryu_module name)
     cmake_parse_arguments(ARG "" "" "SOURCES;LIBS;DEPS" ${ARGN})
@@ -40,7 +46,7 @@ function(ryu_module name)
     target_include_directories(${name} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/${name})
     target_include_directories(${name} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
-    target_link_libraries(${name} PRIVATE
+    target_link_libraries(${name} PUBLIC
         Qt6::Core
         Qt6::Qml
         Qt6::Gui
@@ -119,8 +125,6 @@ target_sources(Shapes PRIVATE Shapes/shapedata.inc)
 
 ryu_module(Extraa
     SOURCES
-        Core/ryuitem.cpp
-        Core/ryuitem.hpp
         Extraa/wavyprogress.cpp
         Extraa/wavyprogress.hpp
         Extraa/materialslider.cpp
@@ -161,8 +165,6 @@ ryu_module(Widgets
     LIBS
         Qt6::Quick
         RyuCore
-        Extraa
     DEPS
         QtQuick
-        Ryu.Extraa
 )

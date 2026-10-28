@@ -1,5 +1,5 @@
 #pragma once
-#include "../Core/ryuitem.hpp"
+#include "../Core/sgitem.hpp"
 #include <QColor>
 #include <QFocusEvent>
 #include <QFont>
@@ -11,7 +11,7 @@
 #include <QStringList>
 #include <QVector>
 
-class MaterialSegmentedButton : public MaterialItem {
+class MaterialSegmentedButton : public SgMaterialItem {
   Q_OBJECT
   QML_ELEMENT
 
@@ -95,8 +95,6 @@ public:
   Q_INVOKABLE bool isDisabled(int i) const { return m_disabled.contains(i); }
   Q_INVOKABLE void setChecked(int i, bool on);
 
-  void paint(QPainter *p) override;
-
 signals:
   void labelsChanged();
   void iconsChanged();
@@ -118,6 +116,7 @@ signals:
   void toggled(int index, bool checked);
 
 protected:
+  void build(Ryu::Mesh &m) override;
   bool advance(qreal dt) override;
   void componentComplete() override;
   void mousePressEvent(QMouseEvent *e) override;

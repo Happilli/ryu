@@ -1,15 +1,19 @@
 #pragma once
-#include "../Core/ryuitem.hpp"
+#include "../Core/sgitem.hpp"
 #include <QColor>
 #include <QFont>
+#include <QImage>
 #include <QKeyEvent>
 #include <QList>
 #include <QMouseEvent>
 #include <QRectF>
 #include <QStringList>
 #include <QVector>
+#include <vector>
 
-class MaterialButtonGroup : public MaterialItem {
+class QSGSimpleTextureNode;
+
+class MaterialButtonGroup : public SgMaterialItem {
   Q_OBJECT
   QML_ELEMENT
 
@@ -99,8 +103,6 @@ public:
   Q_INVOKABLE bool isChecked(int i) const { return m_checked.contains(i); }
   Q_INVOKABLE void setChecked(int i, bool on);
 
-  void paint(QPainter *p) override;
-
 signals:
   void labelsChanged();
   void iconsChanged();
@@ -123,7 +125,9 @@ signals:
   void toggled(int index, bool checked);
 
 protected:
+  void build(Ryu::Mesh &m) override;
   bool advance(qreal dt) override;
+  QSGNode *updatePaintNode(QSGNode *old, UpdatePaintNodeData *d) override;
   void componentComplete() override;
   void geometryChange(const QRectF &n, const QRectF &o) override;
   void mousePressEvent(QMouseEvent *e) override;
@@ -133,6 +137,15 @@ protected:
   void focusOutEvent(QFocusEvent *e) override;
 
 private:
+  struct Cell {
+    QImage img;
+    QRectF rect;
+    QString key;
+    QString shown;
+    bool on = false;
+    QSGSimpleTextureNode *node = nullptr;
+  };
+
   int count() const { return qMax(m_labels.size(), m_icons.size()); }
   QFont labelFont() const;
   void ensureMetrics() const;
@@ -147,6 +160,7 @@ private:
   qreal targetWidth(int i) const;
   void retarget(bool immediate = false);
   QVector<QRectF> displayRects() const;
+  void syncCell(QSGNode *root, Cell &c);
 
   QStringList m_labels;
   QStringList m_icons;
@@ -179,4 +193,6 @@ private:
 
   QVector<Spring> m_round;
   QVector<Spring> m_width;
+
+  std::vector<Cell> m_cells;
 };

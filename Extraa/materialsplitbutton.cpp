@@ -2,8 +2,6 @@
 #include "../Core/paintutil.hpp"
 #include "../Core/sizes.hpp"
 #include <QFontMetricsF>
-#include <QPainter>
-#include <QPen>
 #include <algorithm>
 #include <cmath>
 
@@ -17,7 +15,7 @@ constexpr qreal kSegGap = 2.0;
 } // namespace
 
 MaterialSplitButton::MaterialSplitButton(QQuickItem *parent)
-    : MaterialItem(parent, 520.0, 0.5) {
+    : SgMaterialItem(parent, 520.0, 0.5) {
   setAcceptedMouseButtons(Qt::LeftButton);
   setAcceptHoverEvents(true);
   setActiveFocusOnTab(true);
@@ -228,19 +226,19 @@ void MaterialSplitButton::mouseReleaseEvent(QMouseEvent *e) {
 void MaterialSplitButton::mouseUngrabEvent() { setPressZone(None); }
 
 void MaterialSplitButton::hoverEnterEvent(QHoverEvent *e) {
-  QQuickPaintedItem::hoverEnterEvent(e);
+  QQuickItem::hoverEnterEvent(e);
   if (isEnabled())
     setHoverZone(hit(e->position()));
 }
 
 void MaterialSplitButton::hoverMoveEvent(QHoverEvent *e) {
-  QQuickPaintedItem::hoverMoveEvent(e);
+  QQuickItem::hoverMoveEvent(e);
   if (isEnabled())
     setHoverZone(hit(e->position()));
 }
 
 void MaterialSplitButton::hoverLeaveEvent(QHoverEvent *e) {
-  QQuickPaintedItem::hoverLeaveEvent(e);
+  QQuickItem::hoverLeaveEvent(e);
   setHoverZone(None);
 }
 
@@ -271,14 +269,12 @@ void MaterialSplitButton::keyPressEvent(QKeyEvent *e) {
 }
 
 void MaterialSplitButton::focusOutEvent(QFocusEvent *e) {
-  QQuickPaintedItem::focusOutEvent(e);
+  QQuickItem::focusOutEvent(e);
   m_keyFocus = false;
   update();
 }
 
-void MaterialSplitButton::paint(QPainter *p) {
-  preparePainter(p);
-
+void MaterialSplitButton::build(Ryu::Mesh &m) {
   const int s = m_sizeStyle;
   const qreal h = Ryu::kBtnHeight[s];
   const qreal full = h / 2.0;
@@ -293,62 +289,49 @@ void MaterialSplitButton::paint(QPainter *p) {
   const qreal tL = std::clamp(m_roundLead.x, 0.0, 1.0);
   const qreal tT = std::clamp(m_roundTrail.x, 0.0, 1.0);
 
-  const QPainterPath leadPath =
-      Ryu::sidedRect(leadRect, full, inner + (full - inner) * tL);
-  const QPainterPath trailPath =
-      Ryu::sidedRect(trailRect, inner + (full - inner) * tT, full);
-
   const QColor bg = containerColor();
   const QColor fg = foregroundColor();
 
-  auto drawSegment = [&](const QPainterPath &path, int zone) {
-    p->setPen(Qt::NoPen);
-    if (bg.alpha() > 0) {
-      p->setBrush(bg);
-      p->drawPath(path);
-    }
+  auto segment = [&](const QRectF &r, qreal rl, qreal rr, int zone) {
+    if (bg.alpha() > 0)
+      m.fillRoundedRect(r, rl, rr, rr, rl, bg);
 
     if (m_type == Outlined && m_borderWidth > 0.0 && m_borderColor.alpha() > 0)
-      Ryu::strokeInside(p, path, m_borderColor, m_borderWidth);
+      m.strokeRoundedRect(r, rl, rr, rr, rl, m.snapStroke(m_borderWidth),
+                          m_borderColor);
 
     const qreal layer =
         Ryu::stateLayer(m_hoverZone == zone,
                         m_pressZone == zone ||
                             (m_keyFocus && hasActiveFocus() && zone == Lead));
-    if (layer > 0.0) {
-      p->setBrush(Ryu::withAlpha(fg, layer));
-      p->drawPath(path);
-    }
+    if (layer > 0.0)
+      m.fillRoundedRect(r, rl, rr, rr, rl, Ryu::withAlpha(fg, layer));
   };
 
-  drawSegment(leadPath, Lead);
-  drawSegment(trailPath, Trail);
+  segment(leadRect, full, inner + (full - inner) * tL, Lead);
+  segment(trailRect, inner + (full - inner) * tT, full, Trail);
 
   const qreal iconSz = Ryu::kBtnIcon[s];
   const qreal cy = leadRect.center().y();
   qreal x = leadRect.left() + kPadOuter[s];
 
   if (!m_iconText.isEmpty()) {
-    Ryu::drawGlyph(p, m_iconFont, m_iconText, QPointF(x + iconSz / 2.0, cy),
-                   iconSz, fg);
+    glyphLayer(0, m_iconFont, m_iconText, fg, QPointF(x + iconSz / 2.0, cy),
+               iconSz);
     x += iconSz;
     if (!m_label.isEmpty())
       x += Ryu::kBtnIconGap[s];
   }
 
-  Ryu::drawLabel(p, labelFont(), m_label, x, cy, fg);
+  textLayer(1, labelFont(), m_label, fg, x, cy);
 
   const qreal cw = kChevron[s] / 2.0;
-  p->save();
-  p->translate(trailRect.center());
-  p->rotate(180.0 * m_chev.x);
-  QPainterPath chev;
-  chev.moveTo(-cw, -cw / 2.0);
-  chev.lineTo(0.0, cw / 2.0);
-  chev.lineTo(cw, -cw / 2.0);
-  p->setBrush(Qt::NoBrush);
-  p->setPen(QPen(fg, std::max(1.5, iconSz / 10.0), Qt::SolidLine, Qt::RoundCap,
-                 Qt::RoundJoin));
-  p->drawPath(chev);
-  p->restore();
+  const qreal ang = M_PI * m_chev.x;
+  const qreal ca = std::cos(ang), sa = std::sin(ang);
+  const QPointF tc = trailRect.center();
+  auto rot = [&](qreal px, qreal py) {
+    return QPointF(tc.x() + px * ca - py * sa, tc.y() + px * sa + py * ca);
+  };
+  m.polyline({rot(-cw, -cw / 2.0), rot(0.0, cw / 2.0), rot(cw, -cw / 2.0)},
+             m.snapStroke(std::max(1.5, iconSz / 10.0)), fg);
 }

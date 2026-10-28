@@ -1,15 +1,18 @@
 #pragma once
 #include "../Core/paintutil.hpp"
-#include "../Core/ryuitem.hpp"
+#include "../Core/sgitem.hpp"
 #include <QColor>
 #include <QFont>
+#include <QImage>
 #include <QKeyEvent>
 #include <QMouseEvent>
+#include <QRectF>
 #include <QString>
 #include <QUrl>
-#include <QVariantAnimation>
 
-class MaterialSlider : public RyuItem {
+class QSGSimpleTextureNode;
+
+class MaterialSlider : public SgMaterialItem {
   Q_OBJECT
   QML_ELEMENT
 
@@ -145,8 +148,6 @@ public:
   void setIndicatorColor(const QColor &v);
   void setIndicatorTextColor(const QColor &v);
 
-  void paint(QPainter *p) override;
-
 signals:
   void fromChanged();
   void toChanged();
@@ -180,6 +181,9 @@ signals:
   void outerRadiusChanged();
 
 protected:
+  void build(Ryu::Mesh &m) override;
+  bool advance(qreal dt) override;
+  QSGNode *updatePaintNode(QSGNode *old, UpdatePaintNodeData *d) override;
   void mousePressEvent(QMouseEvent *e) override;
   void mouseMoveEvent(QMouseEvent *e) override;
   void mouseReleaseEvent(QMouseEvent *e) override;
@@ -187,7 +191,16 @@ protected:
   void keyPressEvent(QKeyEvent *e) override;
 
 private:
+  struct Layer {
+    QImage img;
+    QRectF rect;
+    QString key;
+    QString shown;
+    bool on = false;
+  };
+
   void setOverride(qreal &field, qreal v, void (MaterialSlider::*sig)());
+  void syncLayer(QSGNode *root, QSGSimpleTextureNode *&node, Layer &l);
 
   bool horizontal() const { return m_orientation == Horizontal; }
   qreal indicatorSpace() const;
@@ -238,6 +251,10 @@ private:
   QColor m_indicatorColor = QColor("#322F35");
   QColor m_indicatorTextColor = QColor("#F5EFF7");
 
-  qreal m_press = 0.0;
-  QVariantAnimation m_pressAnim;
+  Spring m_press;
+
+  Layer m_iconLayer;
+  Layer m_textLayer;
+  QSGSimpleTextureNode *m_iconNode = nullptr;
+  QSGSimpleTextureNode *m_textNode = nullptr;
 };

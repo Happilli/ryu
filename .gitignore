@@ -49,17 +49,4 @@ __pycache__/
 *.tmp
 .qmlls.ini
 thukuna.jpeg
-wavy.qml
 icon.svg
-button.qml
-iconbutton.qml
-splitBu.qml
-switch.qml
-search.svg
-search.qml
-menu.qml
-list.qml
-clock.qml
-test.qml
-checkradio.qml
-segmented.qml

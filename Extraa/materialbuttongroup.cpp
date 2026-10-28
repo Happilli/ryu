@@ -4,6 +4,10 @@
 #include <QFontMetricsF>
 #include <QMetaObject>
 #include <QPainter>
+#include <QQuickWindow>
+#include <QSGNode>
+#include <QSGSimpleTextureNode>
+#include <QSGTexture>
 #include <algorithm>
 #include <cmath>
 
@@ -16,15 +20,18 @@ constexpr qreal kPressGrow = 0.28;
 } // namespace
 
 MaterialButtonGroup::MaterialButtonGroup(QQuickItem *parent)
-    : MaterialItem(parent, 520.0, 0.5) {
+    : SgMaterialItem(parent, 520.0, 0.5) {
   setAcceptedMouseButtons(Qt::LeftButton);
   setActiveFocusOnTab(true);
   structureChanged();
 }
+
 void MaterialButtonGroup::componentComplete() {
-  MaterialItem::componentComplete();
+  SgMaterialItem::componentComplete();
   retarget(true);
+  update();
 }
+
 QFont MaterialButtonGroup::labelFont() const {
   return Ryu::styledFont(m_font, Ryu::kBtnFont[m_sizeStyle], m_fontWeight);
 }
@@ -275,9 +282,11 @@ void MaterialButtonGroup::setCheckedTextColor(const QColor &v) {
 }
 
 void MaterialButtonGroup::geometryChange(const QRectF &n, const QRectF &o) {
-  QQuickPaintedItem::geometryChange(n, o);
-  if (n.size() != o.size())
+  QQuickItem::geometryChange(n, o);
+  if (n.size() != o.size()) {
     m_layoutDirty = true;
+    update();
+  }
 }
 
 int MaterialButtonGroup::hit(const QPointF &pt) const {
@@ -398,26 +407,72 @@ void MaterialButtonGroup::keyPressEvent(QKeyEvent *e) {
 }
 
 void MaterialButtonGroup::focusOutEvent(QFocusEvent *e) {
-  QQuickPaintedItem::focusOutEvent(e);
+  QQuickItem::focusOutEvent(e);
   m_keyFocus = false;
   update();
 }
 
-void MaterialButtonGroup::paint(QPainter *p) {
+QSGNode *MaterialButtonGroup::updatePaintNode(QSGNode *old,
+                                              UpdatePaintNodeData *d) {
+  if (!old) {
+    for (Cell &c : m_cells) {
+      c.node = nullptr;
+      c.shown.clear();
+    }
+  }
+  QSGNode *root = SgMaterialItem::updatePaintNode(old, d);
+  for (Cell &c : m_cells)
+    syncCell(root, c);
+  while (!m_cells.empty() && !m_cells.back().node)
+    m_cells.pop_back();
+  return root;
+}
+
+void MaterialButtonGroup::syncCell(QSGNode *root, Cell &c) {
+  if (!c.on || c.img.isNull() || !window()) {
+    if (c.node) {
+      root->removeChildNode(c.node);
+      delete c.node;
+      c.node = nullptr;
+    }
+    return;
+  }
+
+  if (!c.node) {
+    c.node = new QSGSimpleTextureNode;
+    c.node->setOwnsTexture(true);
+    c.node->setFiltering(QSGTexture::Linear);
+    root->appendChildNode(c.node);
+    c.shown.clear();
+  }
+
+  if (c.shown != c.key) {
+    c.node->setTexture(window()->createTextureFromImage(c.img));
+    c.shown = c.key;
+  }
+  c.node->setRect(c.rect);
+}
+
+void MaterialButtonGroup::build(Ryu::Mesh &m) {
+  for (Cell &c : m_cells)
+    c.on = false;
+
   if (m_layoutDirty)
     layoutItems();
   ensureMetrics();
   const int n = m_rects.size();
   if (n == 0)
     return;
-
-  preparePainter(p);
+  if (int(m_cells.size()) < n)
+    m_cells.resize(n);
 
   const int s = m_sizeStyle;
   const qreal full = Ryu::kBtnHeight[s] / 2.0;
   const qreal iconSz = Ryu::kBtnIcon[s];
-  const qreal square = Ryu::kBtnSquareR[s];
+  const qreal dpr = m.dpr();
+  const qreal fade = isEnabled() ? 1.0 : Ryu::kDisabledOpacity;
   const QFont lf = labelFont();
+  const QFontMetricsF fm(lf);
   const QVector<QRectF> rects = displayRects();
 
   for (int i = 0; i < n; ++i) {
@@ -427,7 +482,9 @@ void MaterialButtonGroup::paint(QPainter *p) {
 
     qreal rl, rr;
     if (m_variant == Standard) {
-      rl = rr = square + (full - square) * t;
+      rl = rr = kInnerR[s] + (full - kInnerR[s]) * t;
+      const qreal sq = Ryu::kBtnSquareR[s];
+      rl = rr = sq + (full - sq) * t;
     } else {
       const qreal inner = kInnerR[s] + (full - kInnerR[s]) * t;
       rl = (i == 0) ? full : inner;
@@ -442,20 +499,17 @@ void MaterialButtonGroup::paint(QPainter *p) {
     if (!fg.isValid())
       fg = checked ? QColor("#FFFFFF") : QColor("#1D192B");
 
-    const QPainterPath path = Ryu::sidedRect(r, rl, rr);
-    p->setPen(Qt::NoPen);
-    p->setBrush(bg);
-    p->drawPath(path);
+    m.fillRoundedRect(r, rl, rr, rr, rl, bg);
 
     if (m_pressIndex == i ||
-        (m_keyFocus && hasActiveFocus() && m_focusIndex == i)) {
-      p->setBrush(Ryu::withAlpha(fg, Ryu::kPressLayer));
-      p->drawPath(path);
-    }
+        (m_keyFocus && hasActiveFocus() && m_focusIndex == i))
+      m.fillRoundedRect(r, rl, rr, rr, rl,
+                        Ryu::withAlpha(fg, Ryu::kPressLayer));
 
     if (m_borderWidth > 0.0 && m_borderColor.isValid() &&
         m_borderColor.alpha() > 0)
-      Ryu::strokeInside(p, path, m_borderColor, m_borderWidth);
+      m.strokeRoundedRect(r, rl, rr, rr, rl, m.snapStroke(m_borderWidth),
+                          m_borderColor);
 
     const QString lbl = m_labels.value(i);
     const QString ic = m_icons.value(i);
@@ -463,14 +517,45 @@ void MaterialButtonGroup::paint(QPainter *p) {
     const qreal gap =
         (!ic.isEmpty() && !lbl.isEmpty()) ? Ryu::kBtnIconGap[s] : 0.0;
     const qreal contentW = (ic.isEmpty() ? 0.0 : iconSz) + gap + lblW;
-    qreal x = r.center().x() - contentW / 2.0;
+    if (contentW <= 0.0)
+      continue;
 
-    if (!ic.isEmpty()) {
-      Ryu::drawGlyph(p, m_iconFont, ic,
-                     QPointF(x + iconSz / 2.0, r.center().y()), iconSz, fg);
-      x += iconSz + gap;
+    const QColor col = Ryu::withAlpha(fg, fg.alphaF() * fade);
+    const qreal iw = std::ceil(contentW) + 2.0;
+    const qreal ih = std::ceil(std::max(iconSz, fm.height())) + 2.0;
+
+    Cell &c = m_cells[i];
+    const QString key =
+        QStringLiteral("%1|%2|%3|%4|%5|%6|%7|%8|%9")
+            .arg(lbl, ic, m_font.toString(), m_iconFont.toString())
+            .arg(m_fontWeight)
+            .arg(s)
+            .arg(col.name(QColor::HexArgb), QString::number(dpr),
+                 QString::number(iw));
+    if (c.key != key) {
+      c.key = key;
+      const int pw = std::max(1, int(std::ceil(iw * dpr)));
+      const int ph = std::max(1, int(std::ceil(ih * dpr)));
+      QImage img(pw, ph, QImage::Format_ARGB32_Premultiplied);
+      img.setDevicePixelRatio(dpr);
+      img.fill(Qt::transparent);
+      QPainter p(&img);
+      p.setRenderHint(QPainter::Antialiasing, true);
+      p.setRenderHint(QPainter::TextAntialiasing, true);
+      p.setRenderHint(QPainter::SmoothPixmapTransform, true);
+      qreal x = (iw - contentW) / 2.0;
+      if (!ic.isEmpty()) {
+        Ryu::drawGlyph(&p, m_iconFont, ic, QPointF(x + iconSz / 2.0, ih / 2.0),
+                       iconSz, col);
+        x += iconSz + gap;
+      }
+      Ryu::drawLabel(&p, lf, lbl, x, ih / 2.0, col);
+      p.end();
+      c.img = img;
     }
 
-    Ryu::drawLabel(p, lf, lbl, x, r.center().y(), fg);
+    c.rect = QRectF(m.snap(r.center().x() - iw / 2.0),
+                    m.snap(r.center().y() - ih / 2.0), iw, ih);
+    c.on = true;
   }
 }

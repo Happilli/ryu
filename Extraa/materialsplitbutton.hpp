@@ -1,5 +1,5 @@
 #pragma once
-#include "../Core/ryuitem.hpp"
+#include "../Core/sgitem.hpp"
 #include <QColor>
 #include <QFocusEvent>
 #include <QFont>
@@ -8,7 +8,7 @@
 #include <QMouseEvent>
 #include <QString>
 
-class MaterialSplitButton : public MaterialItem {
+class MaterialSplitButton : public SgMaterialItem {
   Q_OBJECT
   QML_ELEMENT
 
@@ -68,8 +68,6 @@ public:
   void setBorderColor(const QColor &v);
   void setBorderWidth(qreal v);
 
-  void paint(QPainter *p) override;
-
 signals:
   void labelChanged();
   void iconTextChanged();
@@ -87,6 +85,7 @@ signals:
   void menuClicked();
 
 protected:
+  void build(Ryu::Mesh &m) override;
   bool advance(qreal dt) override;
   void mousePressEvent(QMouseEvent *e) override;
   void mouseReleaseEvent(QMouseEvent *e) override;

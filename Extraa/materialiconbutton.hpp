@@ -1,16 +1,20 @@
 #pragma once
 #include "../Core/paintutil.hpp"
-#include "../Core/ryuitem.hpp"
+#include "../Core/sgitem.hpp"
 #include <QColor>
 #include <QFocusEvent>
 #include <QFont>
 #include <QHoverEvent>
+#include <QImage>
 #include <QKeyEvent>
 #include <QMouseEvent>
+#include <QRectF>
 #include <QString>
 #include <QUrl>
 
-class MaterialIconButton : public MaterialItem {
+class QSGSimpleTextureNode;
+
+class MaterialIconButton : public SgMaterialItem {
   Q_OBJECT
   QML_ELEMENT
 
@@ -99,8 +103,6 @@ public:
   void setBorderColor(const QColor &v);
   void setBorderWidth(qreal v);
 
-  void paint(QPainter *p) override;
-
 signals:
   void typeChanged();
   void sizeStyleChanged();
@@ -124,7 +126,9 @@ signals:
   void toggled();
 
 protected:
+  void build(Ryu::Mesh &m) override;
   bool advance(qreal dt) override;
+  QSGNode *updatePaintNode(QSGNode *old, UpdatePaintNodeData *d) override;
   void mousePressEvent(QMouseEvent *e) override;
   void mouseReleaseEvent(QMouseEvent *e) override;
   void mouseUngrabEvent() override;
@@ -134,6 +138,14 @@ protected:
   void focusOutEvent(QFocusEvent *e) override;
 
 private:
+  struct Layer {
+    QImage img;
+    QRectF rect;
+    QString key;
+    QString shown;
+    bool on = false;
+  };
+
   QColor containerColor() const;
   QColor contentColor() const;
   qreal resolvedIconSize() const;
@@ -144,6 +156,7 @@ private:
   void setPressed(bool v);
   void setHovered(bool v);
   void activate();
+  void syncLayer(QSGNode *root, QSGSimpleTextureNode *&node, Layer &l);
 
   Type m_type = Filled;
   SizeStyle m_sizeStyle = Small;
@@ -171,4 +184,9 @@ private:
 
   Spring m_round;
   Spring m_press;
+
+  Layer m_imgLayer;
+  Layer m_glyphLayer;
+  QSGSimpleTextureNode *m_imgNode = nullptr;
+  QSGSimpleTextureNode *m_glyphNode = nullptr;
 };

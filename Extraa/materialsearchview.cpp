@@ -3,7 +3,7 @@
 #include <QFontMetricsF>
 #include <QMetaObject>
 #include <QPainter>
-#include <QPainterPath>
+#include <QStringList>
 #include <algorithm>
 #include <cmath>
 
@@ -19,7 +19,7 @@ constexpr qreal kSupLh = 20.0;
 } // namespace
 
 MaterialSearchView::MaterialSearchView(QQuickItem *parent)
-    : MaterialItem(parent, 520.0, 0.6) {
+    : SgMaterialItem(parent, 520.0, 0.6) {
   setAcceptedMouseButtons(Qt::LeftButton);
   setAcceptHoverEvents(true);
   setTransformOrigin(Top);
@@ -259,7 +259,7 @@ void MaterialSearchView::setBorderColor(const QColor &v) {
 }
 
 void MaterialSearchView::geometryChange(const QRectF &n, const QRectF &o) {
-  QQuickPaintedItem::geometryChange(n, o);
+  QQuickItem::geometryChange(n, o);
   if (n.size() != o.size()) {
     m_scroll.t = std::clamp(m_scroll.t, 0.0, maxScroll());
     m_scroll.x = std::clamp(m_scroll.x, 0.0, maxScroll());
@@ -300,12 +300,12 @@ void MaterialSearchView::mouseUngrabEvent() {
 }
 
 void MaterialSearchView::hoverEnterEvent(QHoverEvent *e) {
-  QQuickPaintedItem::hoverEnterEvent(e);
+  QQuickItem::hoverEnterEvent(e);
   hoverMoveEvent(e);
 }
 
 void MaterialSearchView::hoverMoveEvent(QHoverEvent *e) {
-  QQuickPaintedItem::hoverMoveEvent(e);
+  QQuickItem::hoverMoveEvent(e);
   if (!isEnabled() || !m_open)
     return;
   const int i = rowAt(e->position());
@@ -321,22 +321,17 @@ void MaterialSearchView::wheelEvent(QWheelEvent *e) {
   e->accept();
 }
 
-void MaterialSearchView::paint(QPainter *p) {
+void MaterialSearchView::build(Ryu::Mesh &m) {
   const qreal w = width(), h = height();
   if (w <= 0.0 || h <= 0.0)
     return;
 
-  preparePainter(p);
-
-  QPainterPath card;
-  card.addRoundedRect(QRectF(0.0, 0.0, w, h), m_radius, m_radius);
-
-  p->setPen(Qt::NoPen);
-  p->setBrush(m_color);
-  p->drawPath(card);
+  m.fillRoundedRect(QRectF(0.0, 0.0, w, h), m_radius, m_radius, m_radius,
+                    m_radius, m_color);
 
   if (m_borderWidth > 0.0 && m_borderColor.alpha() > 0)
-    Ryu::strokeInside(p, card, m_borderColor, m_borderWidth);
+    m.strokeRoundedRect(QRectF(0.0, 0.0, w, h), m_radius, m_radius, m_radius,
+                        m_radius, m.snapStroke(m_borderWidth), m_borderColor);
 
   const QFont headF = Ryu::styledFont(m_font, 16.0, QFont::Normal);
   const QFont supF = Ryu::styledFont(m_font, 14.0, QFont::Normal);
@@ -344,76 +339,106 @@ void MaterialSearchView::paint(QPainter *p) {
 
   if (m_items.isEmpty()) {
     const qreal tw = QFontMetricsF(supF).horizontalAdvance(m_emptyText);
-    Ryu::drawLabel(p, supF, m_emptyText, (w - tw) / 2.0, h / 2.0,
-                   m_supportingColor);
+    textLayer(0, supF, m_emptyText, m_supportingColor, (w - tw) / 2.0, h / 2.0);
     return;
   }
 
-  p->save();
-  p->setClipPath(card);
-  p->setClipRect(QRectF(0.0, kPad, w, std::max(0.0, h - 2.0 * kPad)),
-                 Qt::IntersectClip);
+  const QRectF vr(0.0, kPad, w, std::max(0.0, h - 2.0 * kPad));
 
   const qreal a = std::clamp(m_hlA.x, 0.0, 1.0);
   if (a > 0.001) {
-    p->setPen(Qt::NoPen);
-    p->setBrush(
-        Ryu::withAlpha(m_highlightColor, m_highlightColor.alphaF() * a));
-    const QRectF hr(kPad, kPad + m_hlY.x - m_scroll.x, w - 2.0 * kPad, m_itemH);
-    p->drawRoundedRect(hr, kRowR, kRowR);
-    if (m_pressIndex >= 0 && m_pressIndex == m_current) {
-      p->setBrush(Ryu::withAlpha(m_textColor, Ryu::kPressLayer * a));
-      p->drawRoundedRect(hr, kRowR, kRowR);
+    const QRectF hr =
+        QRectF(kPad, kPad + m_hlY.x - m_scroll.x, w - 2.0 * kPad, m_itemH)
+            .intersected(vr);
+    if (!hr.isEmpty()) {
+      m.fillRoundedRect(
+          hr, kRowR, kRowR, kRowR, kRowR,
+          Ryu::withAlpha(m_highlightColor, m_highlightColor.alphaF() * a));
+      if (m_pressIndex >= 0 && m_pressIndex == m_current)
+        m.fillRoundedRect(hr, kRowR, kRowR, kRowR, kRowR,
+                          Ryu::withAlpha(m_textColor, Ryu::kPressLayer * a));
     }
   }
 
+  const qreal dpr = m.dpr();
+  const qreal fd = fade();
   const int n = m_items.size();
   const int first = std::max(0, int(std::floor(m_scroll.x / m_itemH)));
   const int last =
       std::min(n - 1, int(std::ceil((m_scroll.x + viewport()) / m_itemH)));
+  const qreal rw = std::ceil((w - 2.0 * kPad) * dpr) / dpr;
+  const qreal rh = std::ceil(m_itemH * dpr) / dpr;
 
   for (int i = first; i <= last; ++i) {
     const Entry &e = m_items[i];
     const qreal y = kPad + i * m_itemH - m_scroll.x;
-    const qreal cy = y + m_itemH / 2.0;
+    const qreal top = std::max(0.0, vr.top() - y);
+    const qreal bot = std::min(m_itemH, vr.bottom() - y);
+    if (bot - top < 0.25)
+      continue;
 
-    p->save();
-    if (!e.enabled)
-      p->setOpacity(p->opacity() * Ryu::kDisabledOpacity);
+    const QString key = QStringList{"r",
+                                    e.headline,
+                                    e.supporting,
+                                    e.trailingText,
+                                    e.leadingIcon,
+                                    e.enabled ? "1" : "0",
+                                    QString::number(rw),
+                                    QString::number(rh),
+                                    QString::number(qRound(top * 4.0)),
+                                    QString::number(qRound(bot * 4.0)),
+                                    m_font.key(),
+                                    m_iconFont.key(),
+                                    m_textColor.name(QColor::HexArgb),
+                                    m_supportingColor.name(QColor::HexArgb),
+                                    m_iconColor.name(QColor::HexArgb),
+                                    QString::number(dpr),
+                                    QString::number(fd)}
+                            .join(QLatin1Char('|'));
 
-    qreal xl = kPad + kRowPad;
-    qreal xr = w - kPad - kRowPad;
+    useLayer(i, key, QRectF(m.snap(kPad), m.snap(y), rw, rh), [&] {
+      QImage img = Ryu::newImage(rw, rh, dpr);
+      QPainter p(&img);
+      p.setRenderHint(QPainter::Antialiasing, true);
+      p.setRenderHint(QPainter::TextAntialiasing, true);
+      p.setClipRect(QRectF(0.0, top, rw, bot - top));
+      p.setOpacity(fd * (e.enabled ? 1.0 : Ryu::kDisabledOpacity));
 
-    if (!e.leadingIcon.isEmpty()) {
-      Ryu::drawGlyph(p, m_iconFont, e.leadingIcon,
-                     QPointF(xl + kIcon / 2.0, cy), kIcon, m_iconColor);
-      xl += kIcon + kGap;
-    }
+      const qreal cy = m_itemH / 2.0;
+      qreal xl = kRowPad;
+      qreal xr = rw - kRowPad;
 
-    if (!e.trailingText.isEmpty()) {
-      const qreal tw = QFontMetricsF(trailF).horizontalAdvance(e.trailingText);
-      Ryu::drawLabel(p, trailF, e.trailingText, xr - tw, cy, m_supportingColor);
-      xr -= tw + kGap;
-    }
+      if (!e.leadingIcon.isEmpty()) {
+        Ryu::drawGlyph(&p, m_iconFont, e.leadingIcon,
+                       QPointF(xl + kIcon / 2.0, cy), kIcon, m_iconColor);
+        xl += kIcon + kGap;
+      }
 
-    const qreal avail = std::max(0.0, xr - xl);
-    const bool two = !e.supporting.isEmpty();
-    const qreal total = kHeadLh + (two ? kSupLh : 0.0);
-    qreal ty = cy - total / 2.0;
+      if (!e.trailingText.isEmpty()) {
+        const qreal tw =
+            QFontMetricsF(trailF).horizontalAdvance(e.trailingText);
+        Ryu::drawLabel(&p, trailF, e.trailingText, xr - tw, cy,
+                       m_supportingColor);
+        xr -= tw + kGap;
+      }
 
-    const QString hs =
-        QFontMetricsF(headF).elidedText(e.headline, Qt::ElideRight, avail);
-    Ryu::drawLabel(p, headF, hs, xl, ty + kHeadLh / 2.0, m_textColor);
-    ty += kHeadLh;
+      const qreal avail = std::max(0.0, xr - xl);
+      const bool two = !e.supporting.isEmpty();
+      const qreal total = kHeadLh + (two ? kSupLh : 0.0);
+      qreal ty = cy - total / 2.0;
 
-    if (two) {
-      const QString ss =
-          QFontMetricsF(supF).elidedText(e.supporting, Qt::ElideRight, avail);
-      Ryu::drawLabel(p, supF, ss, xl, ty + kSupLh / 2.0, m_supportingColor);
-    }
+      const QString hs =
+          QFontMetricsF(headF).elidedText(e.headline, Qt::ElideRight, avail);
+      Ryu::drawLabel(&p, headF, hs, xl, ty + kHeadLh / 2.0, m_textColor);
+      ty += kHeadLh;
 
-    p->restore();
+      if (two) {
+        const QString ss =
+            QFontMetricsF(supF).elidedText(e.supporting, Qt::ElideRight, avail);
+        Ryu::drawLabel(&p, supF, ss, xl, ty + kSupLh / 2.0, m_supportingColor);
+      }
+      p.end();
+      return img;
+    });
   }
-
-  p->restore();
 }

@@ -1,5 +1,5 @@
 #pragma once
-#include "../Core/ryuitem.hpp"
+#include "../Core/sgitem.hpp"
 #include <QColor>
 #include <QFont>
 #include <QHoverEvent>
@@ -9,7 +9,7 @@
 #include <QVariant>
 #include <QVector>
 
-class MaterialMenu : public MaterialItem {
+class MaterialMenu : public SgMaterialItem {
   Q_OBJECT
   QML_ELEMENT
 
@@ -93,8 +93,6 @@ public:
   Q_INVOKABLE void popup(qreal x, qreal y);
   Q_INVOKABLE void close() { setOpen(false); }
 
-  void paint(QPainter *p) override;
-
 signals:
   void modelChanged();
   void openChanged();
@@ -120,6 +118,7 @@ signals:
   void closed();
 
 protected:
+  void build(Ryu::Mesh &m) override;
   bool advance(qreal dt) override;
   void geometryChange(const QRectF &n, const QRectF &o) override;
   void mousePressEvent(QMouseEvent *e) override;

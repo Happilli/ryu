@@ -3,9 +3,6 @@
 #include <QFontMetricsF>
 #include <QLineF>
 #include <QMetaObject>
-#include <QPainter>
-#include <QPainterPath>
-#include <QPen>
 #include <algorithm>
 #include <cmath>
 
@@ -15,17 +12,17 @@ constexpr qreal kPad = 12.0;
 constexpr qreal kIcon = 18.0;
 constexpr qreal kGap = 8.0;
 constexpr qreal kFontPx = 14.0;
-constexpr qreal kPressShrink = 0.06;
 constexpr qreal kCheckStiffness = 0.9;
 constexpr qreal kPressStiffness = 1.4;
 constexpr qreal kMarkW = 2.0;
+constexpr int kSlots = 2;
 const QPointF kCheckA(-4.5, 0.5);
 const QPointF kCheckB(-1.5, 3.5);
 const QPointF kCheckC(4.5, -3.5);
 } // namespace
 
 MaterialSegmentedButton::MaterialSegmentedButton(QQuickItem *parent)
-    : MaterialItem(parent, 520.0, 0.55) {
+    : SgMaterialItem(parent, 520.0, 0.55) {
   setAcceptedMouseButtons(Qt::LeftButton);
   setAcceptHoverEvents(true);
   setActiveFocusOnTab(true);
@@ -33,7 +30,7 @@ MaterialSegmentedButton::MaterialSegmentedButton(QQuickItem *parent)
 }
 
 void MaterialSegmentedButton::componentComplete() {
-  MaterialItem::componentComplete();
+  SgMaterialItem::componentComplete();
   retarget(true);
   update();
 }
@@ -340,12 +337,12 @@ void MaterialSegmentedButton::mouseUngrabEvent() {
 }
 
 void MaterialSegmentedButton::hoverEnterEvent(QHoverEvent *e) {
-  QQuickPaintedItem::hoverEnterEvent(e);
+  QQuickItem::hoverEnterEvent(e);
   hoverMoveEvent(e);
 }
 
 void MaterialSegmentedButton::hoverMoveEvent(QHoverEvent *e) {
-  QQuickPaintedItem::hoverMoveEvent(e);
+  QQuickItem::hoverMoveEvent(e);
   if (!isEnabled())
     return;
   const int i = hit(e->position());
@@ -358,7 +355,7 @@ void MaterialSegmentedButton::hoverMoveEvent(QHoverEvent *e) {
 }
 
 void MaterialSegmentedButton::hoverLeaveEvent(QHoverEvent *e) {
-  QQuickPaintedItem::hoverLeaveEvent(e);
+  QQuickItem::hoverLeaveEvent(e);
   setHand(false);
   m_hoverIndex = -1;
   update();
@@ -392,71 +389,67 @@ void MaterialSegmentedButton::keyPressEvent(QKeyEvent *e) {
 }
 
 void MaterialSegmentedButton::focusOutEvent(QFocusEvent *e) {
-  QQuickPaintedItem::focusOutEvent(e);
+  QQuickItem::focusOutEvent(e);
   m_keyFocus = false;
   update();
 }
 
-void MaterialSegmentedButton::paint(QPainter *p) {
+void MaterialSegmentedButton::build(Ryu::Mesh &m) {
   const int n = count();
   if (n == 0 || width() <= 0.0)
     return;
 
   ensureMetrics();
-  preparePainter(p);
 
   const QVector<QRectF> rects = layoutRects();
   const QRectF bounds(rects.first().left(), rects.first().top(),
                       rects.last().right() - rects.first().left(), kHeight);
   const qreal full = kHeight / 2.0;
-  const QPainterPath pill = Ryu::roundedRect(bounds, full, full, full, full);
   const QFont lf = labelFont();
   const qreal cy = bounds.center().y();
 
-  p->setPen(Qt::NoPen);
-
-  p->save();
-  p->setClipPath(pill);
   for (int i = 0; i < n; ++i) {
     const QRectF r = rects[i];
-    const qreal fill = std::clamp(m_fill[i].x, 0.0, 1.0);
-    if (m_color.alpha() > 0) {
-      p->setBrush(m_color);
-      p->drawRect(r);
-    }
-    if (fill > 0.001) {
-      p->setBrush(
+    const qreal fill = std::clamp(m_fill.value(i).x, 0.0, 1.0);
+    const qreal rl = i == 0 ? full : 0.0;
+    const qreal rr = i == n - 1 ? full : 0.0;
+
+    if (m_color.alpha() > 0)
+      m.fillRoundedRect(r, rl, rr, rr, rl, m_color);
+    if (fill > 0.001)
+      m.fillRoundedRect(
+          r, rl, rr, rr, rl,
           Ryu::withAlpha(m_checkedColor, m_checkedColor.alphaF() * fill));
-      p->drawRect(r);
-    }
+
     const QColor fg = Ryu::mix(m_textColor, m_checkedTextColor, fill);
     const qreal layer =
         Ryu::stateLayer(m_hoverIndex == i,
                         m_pressIndex == i || (m_keyFocus && hasActiveFocus() &&
                                               m_focusIndex == i));
-    if (layer > 0.0) {
-      p->setBrush(Ryu::withAlpha(fg, layer));
-      p->drawRect(r);
-    }
+    if (layer > 0.0)
+      m.fillRoundedRect(r, rl, rr, rr, rl, Ryu::withAlpha(fg, layer));
   }
-  p->restore();
 
   if (m_borderWidth > 0.0 && m_borderColor.alpha() > 0) {
-    p->setPen(QPen(m_borderColor, m_borderWidth));
+    const qreal bw = m.snapStroke(m_borderWidth);
     for (int i = 1; i < n; ++i) {
       const qreal x = std::round(rects[i].left()) + 0.5;
-      p->drawLine(QPointF(x, bounds.top()), QPointF(x, bounds.bottom()));
+      m.line(QPointF(x, bounds.top() + bw / 2.0),
+             QPointF(x, bounds.bottom() - bw / 2.0), bw, m_borderColor);
     }
-    Ryu::strokeInside(p, pill, m_borderColor, m_borderWidth);
+    m.strokeRoundedRect(bounds, full, full, full, full, bw, m_borderColor);
   }
 
   for (int i = 0; i < n; ++i) {
     const QRectF r = rects[i];
-    const qreal fill = std::clamp(m_fill[i].x, 0.0, 1.0);
-    const qreal chk = std::max(0.0, m_check[i].x);
+    const qreal fill = std::clamp(m_fill.value(i).x, 0.0, 1.0);
+    const qreal chk = std::max(0.0, m_check.value(i).x);
     const qreal chkC = std::min(chk, 1.0);
-    const qreal press = std::max(0.0, m_press[i].x);
-    const QColor fg = Ryu::mix(m_textColor, m_checkedTextColor, fill);
+    const qreal dim = isDisabled(i) ? Ryu::kDisabledOpacity : 1.0;
+
+    const QColor mixed = Ryu::mix(m_textColor, m_checkedTextColor, fill);
+    const QColor base = isChecked(i) ? m_checkedTextColor : m_textColor;
+    const QColor col = Ryu::withAlpha(base, base.alphaF() * dim);
 
     const QString lbl = m_labels.value(i);
     const QString ic = m_icons.value(i);
@@ -475,49 +468,31 @@ void MaterialSegmentedButton::paint(QPainter *p) {
 
     const qreal contentW = slotPart + gapPart + tw;
     const qreal x0 = r.center().x() - contentW / 2.0;
+    const QPointF c(x0 + kIcon / 2.0, cy);
 
-    p->save();
-    if (isDisabled(i))
-      p->setOpacity(p->opacity() * Ryu::kDisabledOpacity);
-    p->translate(r.center().x(), cy);
-    const qreal sc = 1.0 - kPressShrink * std::min(press, 1.4);
-    p->scale(sc, sc);
-    p->translate(-r.center().x(), -cy);
-
-    if (icon) {
-      const QPointF c(x0 + kIcon / 2.0, cy);
-      const qreal iconA = m_showCheck ? 1.0 - chkC : 1.0;
-      if (iconA > 0.01)
-        Ryu::drawGlyph(p, m_iconFont, ic, c, kIcon,
-                       Ryu::withAlpha(fg, fg.alphaF() * iconA));
-    }
+    if (icon && (!m_showCheck || chkC < 0.5))
+      glyphLayer(i * kSlots, m_iconFont, ic, col, c, kIcon);
 
     if (m_showCheck && chkC > 0.01) {
-      const QPointF c(x0 + kIcon / 2.0, cy);
+      const qreal k = kIcon / 18.0;
       const qreal l1 = QLineF(kCheckA, kCheckB).length();
       const qreal l2 = QLineF(kCheckB, kCheckC).length();
       const qreal d = chkC * (l1 + l2);
 
-      QPainterPath check;
-      check.moveTo(kCheckA);
-      if (d <= l1) {
-        check.lineTo(kCheckA + (kCheckB - kCheckA) * (d / l1));
-      } else {
-        check.lineTo(kCheckB);
-        check.lineTo(kCheckB + (kCheckC - kCheckB) * ((d - l1) / l2));
-      }
+      auto map = [&](const QPointF &p) { return c + p * k; };
 
-      p->save();
-      p->translate(c);
-      p->scale(kIcon / 18.0, kIcon / 18.0);
-      p->setBrush(Qt::NoBrush);
-      p->setPen(QPen(fg, kMarkW, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
-      p->drawPath(check);
-      p->restore();
+      QList<QPointF> pts;
+      pts.append(map(kCheckA));
+      if (d <= l1) {
+        pts.append(map(kCheckA + (kCheckB - kCheckA) * (d / l1)));
+      } else {
+        pts.append(map(kCheckB));
+        pts.append(map(kCheckB + (kCheckC - kCheckB) * ((d - l1) / l2)));
+      }
+      m.polyline(pts, kMarkW * k,
+                 Ryu::withAlpha(mixed, mixed.alphaF() * chkC * dim));
     }
 
-    p->setPen(Qt::NoPen);
-    Ryu::drawLabel(p, lf, lbl, x0 + slotPart + gapPart, cy, fg);
-    p->restore();
+    textLayer(i * kSlots + 1, lf, lbl, col, x0 + slotPart + gapPart, cy);
   }
 }

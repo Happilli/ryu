@@ -1,8 +1,5 @@
 #include "./materialswitch.hpp"
 #include "../Core/paintutil.hpp"
-#include <QPainter>
-#include <QPainterPath>
-#include <QPen>
 #include <algorithm>
 #include <cmath>
 
@@ -18,12 +15,13 @@ constexpr qreal kOnD = 24.0;
 constexpr qreal kPressD = 28.0;
 constexpr qreal kLayerD = 40.0;
 constexpr qreal kIconS = 4.0;
+constexpr qreal kIconW = 2.0;
 constexpr qreal kDragSlop = 3.0;
 constexpr qreal kPressStiffness = 1.4;
 } // namespace
 
 MaterialSwitch::MaterialSwitch(QQuickItem *parent)
-    : MaterialItem(parent, 520.0, 0.55) {
+    : SgMaterialItem(parent, 520.0, 0.55) {
   setAcceptedMouseButtons(Qt::LeftButton);
   setAcceptHoverEvents(true);
   setActiveFocusOnTab(true);
@@ -39,7 +37,7 @@ bool MaterialSwitch::overTrack(const QPointF &pt) const {
 }
 
 void MaterialSwitch::componentComplete() {
-  MaterialItem::componentComplete();
+  SgMaterialItem::componentComplete();
   retarget(true);
   update();
 }
@@ -189,12 +187,12 @@ void MaterialSwitch::mouseUngrabEvent() {
 }
 
 void MaterialSwitch::hoverEnterEvent(QHoverEvent *e) {
-  QQuickPaintedItem::hoverEnterEvent(e);
+  QQuickItem::hoverEnterEvent(e);
   hoverMoveEvent(e);
 }
 
 void MaterialSwitch::hoverMoveEvent(QHoverEvent *e) {
-  QQuickPaintedItem::hoverMoveEvent(e);
+  QQuickItem::hoverMoveEvent(e);
   if (!isEnabled())
     return;
   const bool over = overTrack(e->position());
@@ -203,7 +201,7 @@ void MaterialSwitch::hoverMoveEvent(QHoverEvent *e) {
 }
 
 void MaterialSwitch::hoverLeaveEvent(QHoverEvent *e) {
-  QQuickPaintedItem::hoverLeaveEvent(e);
+  QQuickItem::hoverLeaveEvent(e);
   setHovered(false);
   setHand(false);
 }
@@ -231,36 +229,29 @@ void MaterialSwitch::keyPressEvent(QKeyEvent *e) {
 }
 
 void MaterialSwitch::focusOutEvent(QFocusEvent *e) {
-  QQuickPaintedItem::focusOutEvent(e);
+  QQuickItem::focusOutEvent(e);
   m_keyFocus = false;
   update();
 }
 
-void MaterialSwitch::paint(QPainter *p) {
-  preparePainter(p);
-
+void MaterialSwitch::build(Ryu::Mesh &m) {
   const qreal posRaw = m_pos.x;
   const qreal pos = std::clamp(posRaw, 0.0, 1.0);
   const qreal press = std::max(0.0, m_press.x);
 
-  p->translate((width() - kTrackW) / 2.0, (height() - kTrackH) / 2.0);
+  m.setOrigin(QPointF(m.snap((width() - kTrackW) / 2.0),
+                      m.snap((height() - kTrackH) / 2.0)));
 
+  const qreal tr = kTrackH / 2.0;
   const QRectF track(0.0, 0.0, kTrackW, kTrackH);
-  p->setPen(Qt::NoPen);
-  p->setBrush(Ryu::mix(m_trackColor, m_checkedTrackColor, pos));
-  p->drawRoundedRect(track, kTrackH / 2.0, kTrackH / 2.0);
+  m.fillRoundedRect(track, tr, tr, tr, tr,
+                    Ryu::mix(m_trackColor, m_checkedTrackColor, pos));
 
   const qreal borderA = 1.0 - pos;
-  if (borderA > 0.01 && m_borderColor.alpha() > 0) {
-    const qreal half = kBorder / 2.0;
-    p->setBrush(Qt::NoBrush);
-    p->setPen(
-        QPen(Ryu::withAlpha(m_borderColor, m_borderColor.alphaF() * borderA),
-             kBorder));
-    p->drawRoundedRect(track.adjusted(half, half, -half, -half),
-                       kTrackH / 2.0 - half, kTrackH / 2.0 - half);
-    p->setPen(Qt::NoPen);
-  }
+  if (borderA > 0.01 && m_borderColor.alpha() > 0)
+    m.strokeRoundedRect(
+        track, tr, tr, tr, tr, m.snapStroke(kBorder),
+        Ryu::withAlpha(m_borderColor, m_borderColor.alphaF() * borderA));
 
   const qreal offD = m_showIcons ? kOffIconD : kOffD;
   const qreal baseD = offD + (kOnD - offD) * pos;
@@ -268,40 +259,35 @@ void MaterialSwitch::paint(QPainter *p) {
   const qreal r = d / 2.0;
   const qreal cx = std::clamp(kOffX + (kOnX - kOffX) * posRaw, r, kTrackW - r);
   const qreal cy = kTrackH / 2.0;
+  const QPointF c(cx, cy);
 
   const qreal layer =
       Ryu::stateLayer(m_hovered, m_pressed || (m_keyFocus && hasActiveFocus()));
-  if (layer > 0.0) {
-    p->setBrush(Ryu::withAlpha(
-        Ryu::mix(m_handleColor, m_checkedTrackColor, pos), layer));
-    p->drawEllipse(QPointF(cx, cy), kLayerD / 2.0, kLayerD / 2.0);
-  }
+  if (layer > 0.0)
+    m.fillCircle(c, kLayerD / 2.0,
+                 Ryu::withAlpha(
+                     Ryu::mix(m_handleColor, m_checkedTrackColor, pos), layer));
 
-  p->setBrush(Ryu::mix(m_handleColor, m_checkedHandleColor, pos));
-  p->drawEllipse(QPointF(cx, cy), r, r);
+  m.fillCircle(c, r, Ryu::mix(m_handleColor, m_checkedHandleColor, pos));
 
   if (!m_showIcons)
     return;
 
   const QColor ic = Ryu::mix(m_iconColor, m_checkedIconColor, pos);
-  p->setBrush(Qt::NoBrush);
+  const qreal iw = m.snapStroke(kIconW);
 
   const qreal offA = 1.0 - pos;
   if (offA > 0.02) {
-    p->setPen(QPen(Ryu::withAlpha(ic, ic.alphaF() * offA), 2.0, Qt::SolidLine,
-                   Qt::RoundCap, Qt::RoundJoin));
-    p->drawLine(QPointF(cx - kIconS, cy - kIconS),
-                QPointF(cx + kIconS, cy + kIconS));
-    p->drawLine(QPointF(cx - kIconS, cy + kIconS),
-                QPointF(cx + kIconS, cy - kIconS));
+    const QColor col = Ryu::withAlpha(ic, ic.alphaF() * offA);
+    m.line(QPointF(cx - kIconS, cy - kIconS), QPointF(cx + kIconS, cy + kIconS),
+           iw, col);
+    m.line(QPointF(cx - kIconS, cy + kIconS), QPointF(cx + kIconS, cy - kIconS),
+           iw, col);
   }
-  if (pos > 0.02) {
-    p->setPen(QPen(Ryu::withAlpha(ic, ic.alphaF() * pos), 2.0, Qt::SolidLine,
-                   Qt::RoundCap, Qt::RoundJoin));
-    QPainterPath check;
-    check.moveTo(cx - kIconS, cy + 0.5);
-    check.lineTo(cx - kIconS / 3.0, cy + kIconS * 0.8);
-    check.lineTo(cx + kIconS, cy - kIconS * 0.7);
-    p->drawPath(check);
-  }
+
+  if (pos > 0.02)
+    m.polyline({QPointF(cx - kIconS, cy + 0.5),
+                QPointF(cx - kIconS / 3.0, cy + kIconS * 0.8),
+                QPointF(cx + kIconS, cy - kIconS * 0.7)},
+               iw, Ryu::withAlpha(ic, ic.alphaF() * pos));
 }
