@@ -1,8 +1,6 @@
 #include "./materialcheckbox.hpp"
 #include "../Core/paintutil.hpp"
-#include <QCursor>
 #include <QFontMetricsF>
-#include <QGuiApplication>
 #include <QPainter>
 #include <QPainterPath>
 #include <QPen>
@@ -36,17 +34,6 @@ MaterialCheckbox::MaterialCheckbox(QQuickItem *parent)
   retarget(true);
 }
 
-MaterialCheckbox::~MaterialCheckbox() { setHand(false); }
-
-void MaterialCheckbox::setHand(bool on) {
-  if (on == m_handOn)
-    return;
-  m_handOn = on;
-  if (on)
-    QGuiApplication::setOverrideCursor(QCursor(Qt::PointingHandCursor));
-  else
-    QGuiApplication::restoreOverrideCursor();
-}
 void MaterialCheckbox::componentComplete() {
   MaterialItem::componentComplete();
   retarget(true);

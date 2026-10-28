@@ -1,7 +1,5 @@
 #include "./materialiconbutton.hpp"
 #include "../Core/sizes.hpp"
-#include <QCursor>
-#include <QGuiApplication>
 #include <QPainter>
 #include <QPainterPath>
 #include <QPen>
@@ -24,17 +22,6 @@ MaterialIconButton::MaterialIconButton(QQuickItem *parent)
   setActiveFocusOnTab(true);
   updateImplicit();
   retarget(true);
-}
-MaterialIconButton::~MaterialIconButton() { setHand(false); }
-
-void MaterialIconButton::setHand(bool on) {
-  if (on == m_handOn)
-    return;
-  m_handOn = on;
-  if (on)
-    QGuiApplication::setOverrideCursor(QCursor(Qt::PointingHandCursor));
-  else
-    QGuiApplication::restoreOverrideCursor();
 }
 
 QColor MaterialIconButton::containerColor() const {

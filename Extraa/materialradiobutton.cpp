@@ -1,8 +1,6 @@
 #include "./materialradiobutton.hpp"
 #include "../Core/paintutil.hpp"
-#include <QCursor>
 #include <QFontMetricsF>
-#include <QGuiApplication>
 #include <QPainter>
 #include <QPen>
 #include <algorithm>
@@ -30,17 +28,6 @@ MaterialRadioButton::MaterialRadioButton(QQuickItem *parent)
   updateImplicit();
   retarget(true);
 }
-MaterialRadioButton::~MaterialRadioButton() { setHand(false); }
-
-void MaterialRadioButton::setHand(bool on) {
-  if (on == m_handOn)
-    return;
-  m_handOn = on;
-  if (on)
-    QGuiApplication::setOverrideCursor(QCursor(Qt::PointingHandCursor));
-  else
-    QGuiApplication::restoreOverrideCursor();
-}
 
 void MaterialRadioButton::componentComplete() {
   MaterialItem::componentComplete();
@@ -49,10 +36,12 @@ void MaterialRadioButton::componentComplete() {
   retarget(true);
   update();
 }
+
 bool MaterialRadioButton::overCircle(const QPointF &pt) const {
   return std::hypot(pt.x() - kArea / 2.0, pt.y() - height() / 2.0) <=
          kArea / 2.0;
 }
+
 QFont MaterialRadioButton::labelFont() const {
   return Ryu::styledFont(m_font, kFontPx, m_fontWeight);
 }
@@ -205,6 +194,7 @@ void MaterialRadioButton::moveFocus(int dir) {
   next->forceActiveFocus(Qt::TabFocusReason);
   next->activate();
 }
+
 void MaterialRadioButton::mousePressEvent(QMouseEvent *e) {
   if (!isEnabled() || !overCircle(e->position())) {
     e->ignore();

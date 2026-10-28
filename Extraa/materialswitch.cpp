@@ -1,7 +1,5 @@
 #include "./materialswitch.hpp"
 #include "../Core/paintutil.hpp"
-#include <QCursor>
-#include <QGuiApplication>
 #include <QPainter>
 #include <QPainterPath>
 #include <QPen>
@@ -33,28 +31,19 @@ MaterialSwitch::MaterialSwitch(QQuickItem *parent)
   setImplicitHeight(kTrackH);
   retarget(true);
 }
-MaterialSwitch::~MaterialSwitch() { setHand(false); }
-
-void MaterialSwitch::setHand(bool on) {
-  if (on == m_handOn)
-    return;
-  m_handOn = on;
-  if (on)
-    QGuiApplication::setOverrideCursor(QCursor(Qt::PointingHandCursor));
-  else
-    QGuiApplication::restoreOverrideCursor();
-}
 
 bool MaterialSwitch::overTrack(const QPointF &pt) const {
   const QRectF track((width() - kTrackW) / 2.0, (height() - kTrackH) / 2.0,
                      kTrackW, kTrackH);
   return track.contains(pt);
 }
+
 void MaterialSwitch::componentComplete() {
   MaterialItem::componentComplete();
   retarget(true);
   update();
 }
+
 void MaterialSwitch::retarget(bool immediate) {
   if (!m_dragging)
     m_pos.go(m_checked ? 1.0 : 0.0, immediate);

@@ -33,7 +33,6 @@ class MaterialSwitch : public MaterialItem {
 
 public:
   explicit MaterialSwitch(QQuickItem *parent = nullptr);
-  ~MaterialSwitch() override;
 
   bool checked() const { return m_checked; }
   bool showIcons() const { return m_showIcons; }
@@ -88,14 +87,12 @@ protected:
   void focusOutEvent(QFocusEvent *e) override;
 
 private:
-  void setHand(bool on);
   void setPressed(bool v);
   void setHovered(bool v);
   void retarget(bool immediate = false);
   void userSet(bool on);
 
   bool overTrack(const QPointF &pt) const;
-  bool m_handOn = false;
   bool m_checked = false;
   bool m_showIcons = false;
   bool m_pressed = false;

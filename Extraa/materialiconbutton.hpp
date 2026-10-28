@@ -58,7 +58,6 @@ public:
   Q_ENUM(Shape)
 
   explicit MaterialIconButton(QQuickItem *parent = nullptr);
-  ~MaterialIconButton() override;
 
   Type type() const { return m_type; }
   SizeStyle sizeStyle() const { return m_sizeStyle; }
@@ -142,7 +141,6 @@ private:
   qreal targetRound() const;
   void updateImplicit();
   void retarget(bool immediate = false);
-  void setHand(bool on);
   void setPressed(bool v);
   void setHovered(bool v);
   void activate();
@@ -152,7 +150,6 @@ private:
   WidthStyle m_widthStyle = Default;
   Shape m_shape = Round;
   bool m_checkable = false;
-  bool m_handOn = false;
   bool m_checked = false;
   bool m_pressed = false;
   bool m_hovered = false;

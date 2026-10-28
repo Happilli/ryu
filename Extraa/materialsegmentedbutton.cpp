@@ -1,8 +1,6 @@
 #include "./materialsegmentedbutton.hpp"
 #include "../Core/paintutil.hpp"
-#include <QCursor>
 #include <QFontMetricsF>
-#include <QGuiApplication>
 #include <QLineF>
 #include <QMetaObject>
 #include <QPainter>
@@ -34,17 +32,6 @@ MaterialSegmentedButton::MaterialSegmentedButton(QQuickItem *parent)
   structureChanged();
 }
 
-MaterialSegmentedButton::~MaterialSegmentedButton() { setHand(false); }
-
-void MaterialSegmentedButton::setHand(bool on) {
-  if (on == m_handOn)
-    return;
-  m_handOn = on;
-  if (on)
-    QGuiApplication::setOverrideCursor(QCursor(Qt::PointingHandCursor));
-  else
-    QGuiApplication::restoreOverrideCursor();
-}
 void MaterialSegmentedButton::componentComplete() {
   MaterialItem::componentComplete();
   retarget(true);
@@ -457,7 +444,7 @@ void MaterialSegmentedButton::paint(QPainter *p) {
   if (m_borderWidth > 0.0 && m_borderColor.alpha() > 0) {
     p->setPen(QPen(m_borderColor, m_borderWidth));
     for (int i = 1; i < n; ++i) {
-      const qreal x = std::round(rects[i].left());
+      const qreal x = std::round(rects[i].left()) + 0.5;
       p->drawLine(QPointF(x, bounds.top()), QPointF(x, bounds.bottom()));
     }
     Ryu::strokeInside(p, pill, m_borderColor, m_borderWidth);

@@ -9,6 +9,7 @@ class RyuItem : public QQuickPaintedItem {
 
 public:
   explicit RyuItem(QQuickItem *parent = nullptr);
+  ~RyuItem() override;
 
 protected:
   void itemChange(ItemChange change, const ItemChangeData &data) override;
@@ -26,6 +27,10 @@ protected:
   }
 
   void preparePainter(QPainter *p) const;
+  void setHand(bool on);
+
+private:
+  bool m_handOn = false;
 };
 
 class MaterialItem : public RyuItem {

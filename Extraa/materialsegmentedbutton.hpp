@@ -52,7 +52,6 @@ public:
   Q_ENUM(SelectionMode)
 
   explicit MaterialSegmentedButton(QQuickItem *parent = nullptr);
-  ~MaterialSegmentedButton() override;
 
   QStringList labels() const { return m_labels; }
   QStringList icons() const { return m_icons; }
@@ -77,7 +76,6 @@ public:
   void setLabels(const QStringList &v);
   void setIcons(const QStringList &v);
   void setFont(const QFont &v);
-  void setHand(bool on);
   void setIconFont(const QFont &v);
   void setFontWeight(int v);
   void setSelectionMode(SelectionMode v);
@@ -156,7 +154,6 @@ private:
   QList<int> m_disabled;
   bool m_showCheck = true;
   bool m_fillWidth = false;
-  bool m_handOn = false;
   qreal m_borderWidth = 1.0;
   QColor m_borderColor = QColor("#79747E");
 

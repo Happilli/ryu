@@ -39,7 +39,6 @@ public:
   Q_ENUM(CheckState)
 
   explicit MaterialCheckbox(QQuickItem *parent = nullptr);
-  ~MaterialCheckbox() override;
 
   bool checked() const { return m_state == Checked; }
   CheckState checkState() const { return m_state; }
@@ -106,11 +105,9 @@ private:
   void setHovered(bool v);
   bool applyState(CheckState s, bool user);
   void activate();
-  void setHand(bool on);
 
   CheckState m_state = Unchecked;
   bool m_error = false;
-  bool m_handOn = false;
   bool m_pressed = false;
   bool m_hovered = false;
   bool m_keyFocus = false;

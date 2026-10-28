@@ -34,7 +34,6 @@ class MaterialRadioButton : public MaterialItem {
 
 public:
   explicit MaterialRadioButton(QQuickItem *parent = nullptr);
-  ~MaterialRadioButton() override;
 
   bool checked() const { return m_checked; }
   QString group() const { return m_group; }
@@ -91,7 +90,6 @@ protected:
   void hoverMoveEvent(QHoverEvent *e) override;
 
 private:
-  void setHand(bool on);
   bool overCircle(const QPointF &pt) const;
   QFont labelFont() const;
   qreal textWidth() const;
@@ -106,7 +104,6 @@ private:
   void moveFocus(int dir);
   void activate();
 
-  bool m_handOn = false;
   bool m_checked = false;
   QString m_group;
   bool m_error = false;
