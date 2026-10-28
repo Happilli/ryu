@@ -35,7 +35,57 @@ void MaterialButtonGroup::componentComplete() {
 QFont MaterialButtonGroup::labelFont() const {
   return Ryu::styledFont(m_font, Ryu::kBtnFont[m_sizeStyle], m_fontWeight);
 }
+qreal MaterialButtonGroup::uniformWidth() const {
+  qreal w = 0.0;
+  for (int i = 0; i < count(); ++i)
+    w = std::max(w, itemWidth(i));
+  return w;
+}
 
+qreal MaterialButtonGroup::naturalWidth() const {
+  const int n = count();
+  qreal total = 0.0;
+  if (m_equalWidth)
+    total = uniformWidth() * n;
+  else
+    for (int i = 0; i < n; ++i)
+      total += itemWidth(i);
+  return total + spacingValue() * std::max(0, n - 1);
+}
+
+void MaterialButtonGroup::layoutItems() {
+  m_layoutDirty = false;
+  const int n = count();
+  m_rects.assign(n, QRectF());
+  if (n == 0)
+    return;
+
+  const qreal h = Ryu::kBtnHeight[m_sizeStyle];
+  const qreal gap = spacingValue();
+  const qreal total = naturalWidth();
+  const qreal y = std::round((height() - h) / 2.0);
+
+  qreal eq = m_equalWidth ? uniformWidth() : 0.0;
+  qreal extra = 0.0;
+  if (m_fillWidth && width() > total) {
+    if (m_equalWidth)
+      eq = (width() - gap * (n - 1)) / n;
+    else
+      extra = (width() - total) / n;
+  }
+
+  qreal x = 0.0;
+  for (int i = 0; i < n; ++i) {
+    const qreal w = m_equalWidth ? eq : itemWidth(i) + extra;
+    m_rects[i] = QRectF(x, y, w, h);
+    x += w + gap;
+  }
+}
+
+void MaterialButtonGroup::setEqualWidth(bool v) {
+  if (assign(m_equalWidth, v, &MaterialButtonGroup::equalWidthChanged))
+    structureChanged();
+}
 void MaterialButtonGroup::ensureMetrics() const {
   const int n = count();
   if (!m_metricsDirty && m_textW.size() == n)
@@ -56,46 +106,20 @@ qreal MaterialButtonGroup::spacingValue() const {
   return m_variant == Connected ? kConnectedGap : kStdGap[m_sizeStyle];
 }
 
+qreal MaterialButtonGroup::padValue() const {
+  return m_padX >= 0.0 ? m_padX : kPad[m_sizeStyle];
+}
+
 qreal MaterialButtonGroup::itemWidth(int i) const {
   ensureMetrics();
   const bool hasIcon = !m_icons.value(i).isEmpty();
   const qreal tw = m_textW.value(i);
-  qreal w = 2.0 * kPad[m_sizeStyle];
+  qreal w = 2.0 * padValue();
   if (hasIcon)
     w += Ryu::kBtnIcon[m_sizeStyle];
   if (hasIcon && tw > 0.0)
     w += Ryu::kBtnIconGap[m_sizeStyle];
   return w + tw;
-}
-
-qreal MaterialButtonGroup::naturalWidth() const {
-  qreal total = 0.0;
-  const int n = count();
-  for (int i = 0; i < n; ++i)
-    total += itemWidth(i);
-  return total + spacingValue() * std::max(0, n - 1);
-}
-
-void MaterialButtonGroup::layoutItems() {
-  m_layoutDirty = false;
-  const int n = count();
-  m_rects.assign(n, QRectF());
-  if (n == 0)
-    return;
-
-  const qreal h = Ryu::kBtnHeight[m_sizeStyle];
-  const qreal gap = spacingValue();
-  const qreal total = naturalWidth();
-  const qreal extra =
-      (m_fillWidth && width() > total) ? (width() - total) / n : 0.0;
-  const qreal y = std::round((height() - h) / 2.0);
-
-  qreal x = 0.0;
-  for (int i = 0; i < n; ++i) {
-    const qreal w = itemWidth(i) + extra;
-    m_rects[i] = QRectF(x, y, w, h);
-    x += w + gap;
-  }
 }
 
 QVector<QRectF> MaterialButtonGroup::displayRects() const {
@@ -248,6 +272,13 @@ void MaterialButtonGroup::setSpacing(qreal v) {
   if (v < 0.0)
     v = -1.0;
   if (assign(m_spacing, v, &MaterialButtonGroup::spacingChanged))
+    structureChanged();
+}
+
+void MaterialButtonGroup::setHorizontalPadding(qreal v) {
+  if (v < 0.0)
+    v = -1.0;
+  if (assign(m_padX, v, &MaterialButtonGroup::horizontalPaddingChanged))
     structureChanged();
 }
 

@@ -36,6 +36,10 @@ class MaterialButtonGroup : public SgMaterialItem {
   Q_PROPERTY(int currentIndex READ currentIndex WRITE setCurrentIndex NOTIFY
                  checkedIndicesChanged)
   Q_PROPERTY(qreal spacing READ spacing WRITE setSpacing NOTIFY spacingChanged)
+  Q_PROPERTY(qreal horizontalPadding READ horizontalPadding WRITE
+                 setHorizontalPadding NOTIFY horizontalPaddingChanged)
+  Q_PROPERTY(bool equalWidth READ equalWidth WRITE setEqualWidth NOTIFY
+                 equalWidthChanged)
   Q_PROPERTY(
       bool fillWidth READ fillWidth WRITE setFillWidth NOTIFY fillWidthChanged)
   Q_PROPERTY(qreal borderWidth READ borderWidth WRITE setBorderWidth NOTIFY
@@ -73,7 +77,9 @@ public:
     return m_checked.isEmpty() ? -1 : m_checked.first();
   }
   qreal spacing() const { return m_spacing; }
+  qreal horizontalPadding() const { return m_padX; }
   bool fillWidth() const { return m_fillWidth; }
+  bool equalWidth() const { return m_equalWidth; }
   qreal borderWidth() const { return m_borderWidth; }
   QColor borderColor() const { return m_borderColor; }
   QColor color() const { return m_color; }
@@ -92,6 +98,8 @@ public:
   void setCheckedIndices(const QList<int> &v);
   void setCurrentIndex(int i);
   void setSpacing(qreal v);
+  void setHorizontalPadding(qreal v);
+  void setEqualWidth(bool v);
   void setFillWidth(bool v);
   void setBorderWidth(qreal v);
   void setBorderColor(const QColor &v);
@@ -104,6 +112,7 @@ public:
   Q_INVOKABLE void setChecked(int i, bool on);
 
 signals:
+  void equalWidthChanged();
   void labelsChanged();
   void iconsChanged();
   void fontChanged();
@@ -114,6 +123,7 @@ signals:
   void selectionModeChanged();
   void checkedIndicesChanged();
   void spacingChanged();
+  void horizontalPaddingChanged();
   void fillWidthChanged();
   void borderWidthChanged();
   void borderColorChanged();
@@ -150,6 +160,9 @@ private:
   QFont labelFont() const;
   void ensureMetrics() const;
   qreal spacingValue() const;
+  qreal uniformWidth() const;
+  bool m_equalWidth = false;
+  qreal padValue() const;
   qreal itemWidth(int i) const;
   qreal naturalWidth() const;
   void layoutItems();
@@ -172,6 +185,7 @@ private:
   SelectionMode m_mode = NoSelection;
   QList<int> m_checked;
   qreal m_spacing = -1.0;
+  qreal m_padX = -1.0;
   bool m_fillWidth = false;
   qreal m_borderWidth = 0.0;
   QColor m_borderColor = QColor("#79747E");

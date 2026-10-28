@@ -10,21 +10,29 @@ pkg_check_modules(PIPEWIRE REQUIRED libpipewire-0.3)
 
 qt_policy(SET QTP0001 NEW)
 
-add_library(RyuCore STATIC
-    Core/paintutil.cpp
-    Core/paintutil.hpp
-    Core/sgitem.cpp
-    Core/sgitem.hpp
-    Core/sizes.hpp
-    Core/spring.hpp
+qt_add_qml_module(RyuCore
+    STATIC
+    URI Ryu.Core
+    VERSION 1.0
+    NO_PLUGIN
+    SOURCES
+        Core/paintutil.cpp
+        Core/paintutil.hpp
+        Core/sgitem.cpp
+        Core/sgitem.hpp
+        Core/sizes.hpp
+        Core/spring.hpp
+    OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/Ryu/Core"
 )
 set_target_properties(RyuCore PROPERTIES
     POSITION_INDEPENDENT_CODE ON
     AUTOMOC ON
 )
-target_include_directories(RyuCore PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(RyuCore PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/Core
+)
 target_link_libraries(RyuCore PUBLIC Qt6::Core Qt6::Gui Qt6::Qml Qt6::Quick)
-qt_extract_metatypes(RyuCore)
 
 function(ryu_module name)
     cmake_parse_arguments(ARG "" "" "SOURCES;LIBS;DEPS" ${ARGN})
@@ -119,6 +127,7 @@ ryu_module(Shapes
         RyuCore
     DEPS
         QtQuick
+        Ryu.Core
 )
 
 target_sources(Shapes PRIVATE Shapes/shapedata.inc)
@@ -156,6 +165,7 @@ ryu_module(Extraa
         RyuCore
     DEPS
         QtQuick
+        Ryu.Core
 )
 
 ryu_module(Widgets
@@ -167,4 +177,12 @@ ryu_module(Widgets
         RyuCore
     DEPS
         QtQuick
+        Ryu.Core
+)
+
+install(DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/Ryu/Core/"
+    DESTINATION lib/qt6/qml/Ryu/Core
+    FILES_MATCHING
+    PATTERN "*.qmltypes"
+    PATTERN "qmldir"
 )
