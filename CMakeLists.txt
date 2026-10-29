@@ -1,12 +1,36 @@
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.21)
 project(ryu)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_AUTOMOC ON)
 
-find_package(Qt6 REQUIRED COMPONENTS Core Qml Gui Quick Sql)
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(PIPEWIRE REQUIRED libpipewire-0.3)
+if(PROJECT_IS_TOP_LEVEL)
+    option(RYU_STATIC "Build the QML modules as static libraries" OFF)
+    option(RYU_INSTALL "Generate install rules" ON)
+else()
+    option(RYU_STATIC "Build the QML modules as static libraries" ON)
+    option(RYU_INSTALL "Generate install rules" OFF)
+endif()
+
+set(RYU_ALL_MODULES "Cleave;Clipsh;Sqliter;Warsa;Shapes;Extraa;Widgets")
+set(RYU_MODULES "${RYU_ALL_MODULES}" CACHE STRING "Modules to build")
+
+foreach(m IN LISTS RYU_MODULES)
+    if(NOT m IN_LIST RYU_ALL_MODULES)
+        message(FATAL_ERROR "Unknown Ryu module: ${m}")
+    endif()
+endforeach()
+
+set(RYU_QT_COMPONENTS Core Qml Gui Quick)
+if("Sqliter" IN_LIST RYU_MODULES)
+    list(APPEND RYU_QT_COMPONENTS Sql)
+endif()
+find_package(Qt6 REQUIRED COMPONENTS ${RYU_QT_COMPONENTS})
+
+if("Cleave" IN_LIST RYU_MODULES)
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(PIPEWIRE REQUIRED libpipewire-0.3)
+endif()
 
 qt_policy(SET QTP0001 NEW)
 
@@ -35,6 +59,10 @@ target_include_directories(RyuCore PUBLIC
 target_link_libraries(RyuCore PUBLIC Qt6::Core Qt6::Gui Qt6::Qml Qt6::Quick)
 
 function(ryu_module name)
+    if(NOT name IN_LIST RYU_MODULES)
+        return()
+    endif()
+
     cmake_parse_arguments(ARG "" "" "SOURCES;LIBS;DEPS" ${ARGN})
 
     set(dep_args "")
@@ -42,7 +70,13 @@ function(ryu_module name)
         set(dep_args DEPENDENCIES ${ARG_DEPS})
     endif()
 
+    set(kind "")
+    if(RYU_STATIC)
+        set(kind STATIC)
+    endif()
+
     qt_add_qml_module(${name}
+        ${kind}
         URI Ryu.${name}
         VERSION 1.0
         SOURCES ${ARG_SOURCES}
@@ -50,6 +84,8 @@ function(ryu_module name)
         NO_PLUGIN_OPTIONAL
         OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/Ryu/${name}"
     )
+
+    set_target_properties(${name} PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
     target_include_directories(${name} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/${name})
     target_include_directories(${name} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
@@ -61,23 +97,28 @@ function(ryu_module name)
         ${ARG_LIBS}
     )
 
-    set(install_dir "lib/qt6/qml/Ryu/${name}")
+    add_library(Ryu::${name} ALIAS ${name})
+    add_library(Ryu::${name}plugin ALIAS ${name}plugin)
 
-    install(TARGETS ${name}
-        LIBRARY DESTINATION lib
-    )
+    if(RYU_INSTALL AND NOT RYU_STATIC)
+        set(install_dir "lib/qt6/qml/Ryu/${name}")
 
-    install(TARGETS ${name}plugin
-        LIBRARY DESTINATION ${install_dir}
-    )
+        install(TARGETS ${name}
+            LIBRARY DESTINATION lib
+        )
 
-    install(DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/Ryu/${name}/"
-        DESTINATION ${install_dir}
-        FILES_MATCHING
-        PATTERN "*.qmltypes"
-        PATTERN "qmldir"
-        PATTERN "*.qrc"
-    )
+        install(TARGETS ${name}plugin
+            LIBRARY DESTINATION ${install_dir}
+        )
+
+        install(DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/Ryu/${name}/"
+            DESTINATION ${install_dir}
+            FILES_MATCHING
+            PATTERN "*.qmltypes"
+            PATTERN "qmldir"
+            PATTERN "*.qrc"
+        )
+    endif()
 endfunction()
 
 ryu_module(Cleave
@@ -88,8 +129,10 @@ ryu_module(Cleave
         ${PIPEWIRE_LIBRARIES}
 )
 
-target_include_directories(Cleave PRIVATE ${PIPEWIRE_INCLUDE_DIRS})
-target_compile_options(Cleave PRIVATE ${PIPEWIRE_CFLAGS_OTHER})
+if(TARGET Cleave)
+    target_include_directories(Cleave PRIVATE ${PIPEWIRE_INCLUDE_DIRS})
+    target_compile_options(Cleave PRIVATE ${PIPEWIRE_CFLAGS_OTHER})
+endif()
 
 ryu_module(Clipsh
     SOURCES
@@ -130,7 +173,9 @@ ryu_module(Shapes
         Ryu.Core
 )
 
-target_sources(Shapes PRIVATE Shapes/shapedata.inc)
+if(TARGET Shapes)
+    target_sources(Shapes PRIVATE Shapes/shapedata.inc)
+endif()
 
 ryu_module(Extraa
     SOURCES
@@ -180,9 +225,11 @@ ryu_module(Widgets
         Ryu.Core
 )
 
-install(DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/Ryu/Core/"
-    DESTINATION lib/qt6/qml/Ryu/Core
-    FILES_MATCHING
-    PATTERN "*.qmltypes"
-    PATTERN "qmldir"
-)
+if(RYU_INSTALL AND NOT RYU_STATIC)
+    install(DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/Ryu/Core/"
+        DESTINATION lib/qt6/qml/Ryu/Core
+        FILES_MATCHING
+        PATTERN "*.qmltypes"
+        PATTERN "qmldir"
+    )
+endif()
