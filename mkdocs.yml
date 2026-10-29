@@ -52,6 +52,7 @@ markdown_extensions:
 
 nav:
   - Home: index.md
+  - Embedding: embedding.md
   - Extraa:
       - WavyProgress: extraa/wavy-progress.md
       - MaterialSlider: extraa/material-slider.md

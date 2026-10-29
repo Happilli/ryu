@@ -61,7 +61,7 @@ import Ryu.Shapes
 
 ### Other distros
 
-No packages yet. [Build from source](#build-from-source) and install with `ninja -C build install`.
+No packages yet. [Build from source](#build-from-source) and install with `ninja -C build install`, or [embed Ryu in your app](embedding.md) as a submodule.
 
 ## Build from source
 
