@@ -1,0 +1,1671 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Material 3 components for Qt 6 and QML">
+      
+      
+      
+        <link rel="canonical" href="https://ryu.safalski.ryzn.pro/cleave/cleave/">
+      
+      
+        <link rel="prev" href="../../shapes/material-shape/">
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../dragon.svg">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.0">
+    
+    
+      
+        <title>Cleave - Ryu</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.57a0d79d.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.fb2fffe2.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,700,700i%7CJetBrains+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="ryu-dark" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#cleave" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Ryu" class="md-header__button md-logo" aria-label="Ryu" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="m352 124.5-51.9-13c-6.5-1.6-11.3-7.1-12-13.8s2.8-13.1 8.7-16.1l40.8-20.4-43.3-32.5c-5.5-4.1-7.8-11.3-5.6-17.9S297.1 0 304 0h160c30.2 0 58.7 14.2 76.8 38.4l57.6 76.8c6.2 8.3 9.6 18.4 9.6 28.8 0 26.5-21.5 48-48 48h-21.5c-17 0-33.3-6.7-45.3-18.7L479.9 160h-32v21.5c0 24.8 12.8 47.9 33.8 61.1l106.6 66.6c32.1 20.1 51.6 55.2 51.6 93.1 0 60.6-49.1 109.8-109.8 109.8L32.3 512c-3.3 0-6.6-.4-9.6-1.4C13.5 507.8 6 501 2.3 492 1 488.7.1 485.1 0 481.3c-.2-3.7.3-7.3 1.3-10.7 2.8-9.2 9.6-16.7 18.6-20.4 3-1.2 6.2-2 9.5-2.2l403.9-36c8.3-.7 14.7-7.7 14.7-16.1 0-4.3-1.7-8.4-4.7-11.4l-44.4-44.4c-30-30-46.9-70.7-46.9-113.1zm160-52.2v-.6zm-1.3 7.4-46.4-11.6q-.3 1.95-.3 3.9c0 13.3 10.7 24 24 24 10.6 0 19.5-6.8 22.7-16.3m-379.8 36.8c16.3-14.5 40.4-16.2 58.5-4.1l130.6 87v27.5c0 32.8 8.4 64.8 24 93H112c-6.7 0-12.7-4.2-15-10.4s-.5-13.3 4.6-17.7l69.4-59.5-152.6 23.5c-7 1.1-13.9-2.6-16.9-9s-1.4-14 3.9-18.8z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Ryu
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Cleave
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="ryu-dark" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 7a5 5 0 0 1 5 5 5 5 0 0 1-5 5 5 5 0 0 1-5-5 5 5 0 0 1 5-5m0 2a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3m0-7 2.39 3.42C13.65 5.15 12.84 5 12 5s-1.65.15-2.39.42zM3.34 7l4.16-.35A7.2 7.2 0 0 0 5.94 8.5c-.44.74-.69 1.5-.83 2.29zm.02 10 1.76-3.77a7.131 7.131 0 0 0 2.38 4.14zM20.65 7l-1.77 3.79a7.02 7.02 0 0 0-2.38-4.15zm-.01 10-4.14.36c.59-.51 1.12-1.14 1.54-1.86.42-.73.69-1.5.83-2.29zM12 22l-2.41-3.44c.74.27 1.55.44 2.41.44.82 0 1.63-.17 2.37-.44z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="ryu-light" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m17.75 4.09-2.53 1.94.91 3.06-2.63-1.81-2.63 1.81.91-3.06-2.53-1.94L12.44 4l1.06-3 1.06 3zm3.5 6.91-1.64 1.25.59 1.98-1.7-1.17-1.7 1.17.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95zm-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14.4-.4.82-.76 1.27-1.08.75-.53 1.93.36 1.85 1.19-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82-2.81 3.14-2.7 7.96.31 10.98 3.02 3.01 7.84 3.12 10.98.31"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/Happilli/ryu" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Happilli/ryu
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+    
+      
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../embedding/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Embedding
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../extraa/wavy-progress/" class="md-tabs__link">
+          
+  
+  
+  Extraa
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../shapes/material-shape/" class="md-tabs__link">
+          
+  
+  
+  Shapes
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="./" class="md-tabs__link">
+          
+  
+  
+  Cleave
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+    
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Ryu" class="md-nav__button md-logo" aria-label="Ryu" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="m352 124.5-51.9-13c-6.5-1.6-11.3-7.1-12-13.8s2.8-13.1 8.7-16.1l40.8-20.4-43.3-32.5c-5.5-4.1-7.8-11.3-5.6-17.9S297.1 0 304 0h160c30.2 0 58.7 14.2 76.8 38.4l57.6 76.8c6.2 8.3 9.6 18.4 9.6 28.8 0 26.5-21.5 48-48 48h-21.5c-17 0-33.3-6.7-45.3-18.7L479.9 160h-32v21.5c0 24.8 12.8 47.9 33.8 61.1l106.6 66.6c32.1 20.1 51.6 55.2 51.6 93.1 0 60.6-49.1 109.8-109.8 109.8L32.3 512c-3.3 0-6.6-.4-9.6-1.4C13.5 507.8 6 501 2.3 492 1 488.7.1 485.1 0 481.3c-.2-3.7.3-7.3 1.3-10.7 2.8-9.2 9.6-16.7 18.6-20.4 3-1.2 6.2-2 9.5-2.2l403.9-36c8.3-.7 14.7-7.7 14.7-16.1 0-4.3-1.7-8.4-4.7-11.4l-44.4-44.4c-30-30-46.9-70.7-46.9-113.1zm160-52.2v-.6zm-1.3 7.4-46.4-11.6q-.3 1.95-.3 3.9c0 13.3 10.7 24 24 24 10.6 0 19.5-6.8 22.7-16.3m-379.8 36.8c16.3-14.5 40.4-16.2 58.5-4.1l130.6 87v27.5c0 32.8 8.4 64.8 24 93H112c-6.7 0-12.7-4.2-15-10.4s-.5-13.3 4.6-17.7l69.4-59.5-152.6 23.5c-7 1.1-13.9-2.6-16.9-9s-1.4-14 3.9-18.8z"/></svg>
+
+    </a>
+    Ryu
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/Happilli/ryu" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    Happilli/ryu
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../embedding/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Embedding
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Extraa
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Extraa
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../extraa/wavy-progress/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    WavyProgress
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../extraa/material-slider/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MaterialSlider
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../extraa/material-button-group/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MaterialButtonGroup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../extraa/material-search-box/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MaterialSearchBox
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../extraa/material-menu/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MaterialMenu
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../extraa/material-list/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MaterialList
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Shapes
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Shapes
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../shapes/material-shape/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    MaterialShape
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cleave
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Cleave
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cleave
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cleave
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#properties" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Properties
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Properties">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#analysis" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Analysis
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#output" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Output
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#state" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        State
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#methods" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Methods
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#signals" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Signals
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-it-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How it works
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#choosing-a-source" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Choosing a source
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#auto-suspend" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Auto-suspend
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#more-snippets" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        More snippets
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="More snippets">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#handling-errors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Handling errors
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#calmer-slower-response" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Calmer, slower response
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#start-and-stop-with-a-button" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Start and stop with a button
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Notes
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#properties" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Properties
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Properties">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#analysis" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Analysis
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#output" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Output
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#state" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        State
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#methods" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Methods
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#signals" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Signals
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-it-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How it works
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#choosing-a-source" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Choosing a source
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#auto-suspend" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Auto-suspend
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#more-snippets" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        More snippets
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="More snippets">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#handling-errors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Handling errors
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#calmer-slower-response" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Calmer, slower response
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#start-and-stop-with-a-button" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Start and stop with a button
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Notes
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="cleave">Cleave<a class="headerlink" href="#cleave" title="Permanent link">&para;</a></h1>
+<p>An audio visualizer backend. Cleave listens to your system audio through PipeWire, runs an FFT on it, and hands QML a list of frequency band levels. It draws nothing itself. You decide whether the bands become bars, a ring, a blob, or something worse.</p>
+<p>This one is a string pinned at both ends that vibrates with the music, with the bass in the middle and the treble toward the edges. Its color comes from the system palette, so it follows light and dark mode automatically.</p>
+<div class="highlight"><pre><span></span><code><span class="kr">import</span> <span class="nx">QtQuick</span>
+<span class="kr">import</span> <span class="nx">Ryu</span><span class="p">.</span><span class="nx">Cleave</span>
+
+<span class="nx">Item</span> <span class="p">{</span>
+    <span class="kd">id: root</span>
+    <span class="k">width:</span> <span class="mi">480</span>
+    <span class="k">height:</span> <span class="mi">160</span>
+
+    <span class="nx">property</span> <span class="nx">color</span> <span class="k">stringColor:</span> <span class="nx">palette</span><span class="p">.</span><span class="nx">windowText</span>
+
+    <span class="nx">Cleave</span> <span class="p">{</span>
+        <span class="kd">id: cleave</span>
+        <span class="k">bandCount:</span> <span class="mi">24</span>
+        <span class="k">smoothing:</span> <span class="mf">0.85</span>
+        <span class="k">Component.onCompleted:</span> <span class="nx">startCapture</span><span class="p">()</span>
+        <span class="k">onDataChanged:</span> <span class="nx">canvas</span><span class="p">.</span><span class="nx">requestPaint</span><span class="p">()</span>
+        <span class="k">onError:</span> <span class="nx">msg</span> <span class="o">=&gt;</span> <span class="nx">console</span><span class="p">.</span><span class="nx">warn</span><span class="p">(</span><span class="s2">"Cleave:"</span><span class="p">,</span> <span class="nx">msg</span><span class="p">)</span>
+    <span class="p">}</span>
+
+    <span class="k">onStringColorChanged:</span> <span class="nx">canvas</span><span class="p">.</span><span class="nx">requestPaint</span><span class="p">()</span>
+
+    <span class="nx">Canvas</span> <span class="p">{</span>
+        <span class="kd">id: canvas</span>
+        <span class="k">anchors.fill:</span> <span class="nx">parent</span>
+        <span class="k">antialiasing:</span> <span class="kc">true</span>
+
+        <span class="k">onPaint:</span> <span class="p">{</span>
+            <span class="kr">const</span> <span class="nx">ctx</span> <span class="o">=</span> <span class="nx">getContext</span><span class="p">(</span><span class="s2">"2d"</span><span class="p">)</span>
+            <span class="nx">ctx</span><span class="p">.</span><span class="nx">clearRect</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="nx">width</span><span class="p">,</span> <span class="nx">height</span><span class="p">)</span>
+
+            <span class="kr">const</span> <span class="nx">m</span> <span class="o">=</span> <span class="nx">cleave</span><span class="p">.</span><span class="nx">magnitudes</span>
+            <span class="kr">const</span> <span class="nx">n</span> <span class="o">=</span> <span class="nx">m</span><span class="p">.</span><span class="nx">length</span>
+            <span class="k">if</span> <span class="p">(</span><span class="nx">n</span> <span class="o">===</span> <span class="mi">0</span><span class="p">)</span>
+                <span class="k">return</span>
+
+            <span class="kr">const</span> <span class="nx">midY</span> <span class="o">=</span> <span class="nx">height</span> <span class="o">/</span> <span class="mi">2</span>
+            <span class="kr">const</span> <span class="nx">maxAmp</span> <span class="o">=</span> <span class="nx">height</span> <span class="o">*</span> <span class="mf">0.4</span>
+            <span class="kr">const</span> <span class="nx">pad</span> <span class="o">=</span> <span class="mi">12</span>
+            <span class="kr">const</span> <span class="nx">w</span> <span class="o">=</span> <span class="nx">width</span> <span class="o">-</span> <span class="nx">pad</span> <span class="o">*</span> <span class="mi">2</span>
+            <span class="kr">const</span> <span class="nx">count</span> <span class="o">=</span> <span class="nx">n</span> <span class="o">*</span> <span class="mi">2</span>
+
+            <span class="kr">const</span> <span class="nx">pts</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="p">(</span><span class="kd">let</span> <span class="nx">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">i</span> <span class="o">&lt;</span> <span class="nx">count</span><span class="p">;</span> <span class="o">++</span><span class="nx">i</span><span class="p">)</span> <span class="p">{</span>
+                <span class="kr">const</span> <span class="nx">t</span> <span class="o">=</span> <span class="nx">i</span> <span class="o">/</span> <span class="p">(</span><span class="nx">count</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+                <span class="kr">const</span> <span class="nx">k</span> <span class="o">=</span> <span class="nx">i</span> <span class="o">&lt;</span> <span class="nx">n</span> <span class="o">?</span> <span class="nx">n</span> <span class="o">-</span> <span class="mi">1</span> <span class="o">-</span> <span class="k">i :</span> <span class="nx">i</span> <span class="o">-</span> <span class="nx">n</span>
+                <span class="kr">const</span> <span class="nx">level</span> <span class="o">=</span> <span class="nb">Math</span><span class="p">.</span><span class="nx">min</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nx">m</span><span class="p">[</span><span class="nx">k</span><span class="p">]</span> <span class="o">*</span> <span class="mi">5</span><span class="p">)</span>
+                <span class="kr">const</span> <span class="nx">pin</span> <span class="o">=</span> <span class="nb">Math</span><span class="p">.</span><span class="nx">sin</span><span class="p">(</span><span class="nx">t</span> <span class="o">*</span> <span class="nb">Math</span><span class="p">.</span><span class="nx">PI</span><span class="p">)</span>
+                <span class="kr">const</span> <span class="nx">dir</span> <span class="o">=</span> <span class="p">(</span><span class="nx">i</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">===</span> <span class="mi">0</span><span class="p">)</span> <span class="o">?</span> <span class="mi">1</span> <span class="o">:</span> <span class="o">-</span><span class="mi">1</span>
+
+                <span class="nx">pts</span><span class="p">.</span><span class="nx">push</span><span class="p">({</span>
+                    <span class="k">x:</span> <span class="nx">pad</span> <span class="o">+</span> <span class="nx">t</span> <span class="o">*</span> <span class="nx">w</span><span class="p">,</span>
+                    <span class="k">y:</span> <span class="nx">midY</span> <span class="o">+</span> <span class="nx">dir</span> <span class="o">*</span> <span class="nx">level</span> <span class="o">*</span> <span class="nx">maxAmp</span> <span class="o">*</span> <span class="nx">pin</span>
+                <span class="p">})</span>
+            <span class="p">}</span>
+
+            <span class="nx">ctx</span><span class="p">.</span><span class="nx">lineWidth</span> <span class="o">=</span> <span class="mf">2.5</span>
+            <span class="nx">ctx</span><span class="p">.</span><span class="nx">lineCap</span> <span class="o">=</span> <span class="s2">"round"</span>
+            <span class="nx">ctx</span><span class="p">.</span><span class="nx">lineJoin</span> <span class="o">=</span> <span class="s2">"round"</span>
+            <span class="nx">ctx</span><span class="p">.</span><span class="nx">strokeStyle</span> <span class="o">=</span> <span class="nx">root</span><span class="p">.</span><span class="nx">stringColor</span>
+
+            <span class="nx">ctx</span><span class="p">.</span><span class="nx">beginPath</span><span class="p">()</span>
+            <span class="nx">ctx</span><span class="p">.</span><span class="nx">moveTo</span><span class="p">(</span><span class="nx">pts</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="nx">x</span><span class="p">,</span> <span class="nx">pts</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="nx">y</span><span class="p">)</span>
+            <span class="k">for</span> <span class="p">(</span><span class="kd">let</span> <span class="nx">i</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span> <span class="nx">i</span> <span class="o">&lt;</span> <span class="nx">pts</span><span class="p">.</span><span class="nx">length</span> <span class="o">-</span> <span class="mi">1</span><span class="p">;</span> <span class="o">++</span><span class="nx">i</span><span class="p">)</span> <span class="p">{</span>
+                <span class="kr">const</span> <span class="nx">mx</span> <span class="o">=</span> <span class="p">(</span><span class="nx">pts</span><span class="p">[</span><span class="nx">i</span><span class="p">].</span><span class="nx">x</span> <span class="o">+</span> <span class="nx">pts</span><span class="p">[</span><span class="nx">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">].</span><span class="nx">x</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span>
+                <span class="kr">const</span> <span class="nx">my</span> <span class="o">=</span> <span class="p">(</span><span class="nx">pts</span><span class="p">[</span><span class="nx">i</span><span class="p">].</span><span class="nx">y</span> <span class="o">+</span> <span class="nx">pts</span><span class="p">[</span><span class="nx">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">].</span><span class="nx">y</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span>
+                <span class="nx">ctx</span><span class="p">.</span><span class="nx">quadraticCurveTo</span><span class="p">(</span><span class="nx">pts</span><span class="p">[</span><span class="nx">i</span><span class="p">].</span><span class="nx">x</span><span class="p">,</span> <span class="nx">pts</span><span class="p">[</span><span class="nx">i</span><span class="p">].</span><span class="nx">y</span><span class="p">,</span> <span class="nx">mx</span><span class="p">,</span> <span class="nx">my</span><span class="p">)</span>
+            <span class="p">}</span>
+            <span class="kr">const</span> <span class="nx">last</span> <span class="o">=</span> <span class="nx">pts</span><span class="p">[</span><span class="nx">pts</span><span class="p">.</span><span class="nx">length</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span>
+            <span class="nx">ctx</span><span class="p">.</span><span class="nx">lineTo</span><span class="p">(</span><span class="nx">last</span><span class="p">.</span><span class="nx">x</span><span class="p">,</span> <span class="nx">last</span><span class="p">.</span><span class="nx">y</span><span class="p">)</span>
+            <span class="nx">ctx</span><span class="p">.</span><span class="nx">stroke</span><span class="p">()</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>How it works:</p>
+<ul>
+<li><strong>Theme:</strong> <code>palette.windowText</code> is dark in light mode and light in dark mode, so the line is always readable. Use <code>palette.highlight</code> for an accent color, or a fixed color if you prefer.</li>
+<li><strong>Pinned ends:</strong> the <code>sin(t * π)</code> taper flattens the line at both ends, like a real string.</li>
+<li><strong>Mirroring:</strong> the spectrum is reflected around the center so the curve is symmetric and has no seam.</li>
+<li><strong>Tuning:</strong> change the <code>* 5</code> gain and <code>maxAmp</code> to taste, and raise <code>smoothing</code> toward 0.9 for a calmer line.</li>
+<li><strong>Repaint on theme change:</strong> the <code>onStringColorChanged</code> handler redraws the canvas, otherwise the old color would stay until the next audio update.</li>
+</ul>
+<div class="admonition note">
+<p class="admonition-title">Cleave does not start by itself</p>
+<p>Nothing happens until you call <code>startCapture()</code>. The example does it in <code>Component.onCompleted</code>.</p>
+</div>
+<h2 id="properties">Properties<a class="headerlink" href="#properties" title="Permanent link">&para;</a></h2>
+<h3 id="analysis">Analysis<a class="headerlink" href="#analysis" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>bandCount</code></td>
+<td><code>int</code></td>
+<td><code>32</code></td>
+<td>Number of frequency bands, clamped to 2 to 512. Changing it resets all levels to zero.</td>
+</tr>
+<tr>
+<td><code>smoothing</code></td>
+<td><code>real</code></td>
+<td><code>0.75</code></td>
+<td>How much of the previous level is kept each frame, clamped to 0 to 0.99. Higher is smoother and slower. <code>0</code> is raw.</td>
+</tr>
+<tr>
+<td><code>peakDecay</code></td>
+<td><code>real</code></td>
+<td><code>0.02</code></td>
+<td>How much the peak markers fall per frame, clamped to 0.001 to 0.5. Also the speed at which the levels fall to zero after the sound stops.</td>
+</tr>
+<tr>
+<td><code>silenceThreshold</code></td>
+<td><code>real</code></td>
+<td><code>0.0001</code></td>
+<td>Frames quieter than this (RMS of the samples, 0 to 1) are ignored.</td>
+</tr>
+<tr>
+<td><code>source</code></td>
+<td><code>string</code></td>
+<td>empty</td>
+<td>What to capture. Empty means the default audio output (what you hear). See <a href="#choosing-a-source">Choosing a source</a>.</td>
+</tr>
+<tr>
+<td><code>debugMode</code></td>
+<td><code>bool</code></td>
+<td><code>false</code></td>
+<td>Prints capture state and a once-a-second status line to the console.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="output">Output<a class="headerlink" href="#output" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>magnitudes</code></td>
+<td><code>list&lt;real&gt;</code></td>
+<td>Current level of each band, lowest frequency first. Its length is <code>bandCount</code>.</td>
+</tr>
+<tr>
+<td><code>peaks</code></td>
+<td><code>list&lt;real&gt;</code></td>
+<td>Slowly falling peak of each band, the same length as <code>magnitudes</code>.</td>
+</tr>
+<tr>
+<td><code>fps</code></td>
+<td><code>int</code></td>
+<td>How many FFT frames were processed in the last second. This is the analysis rate, not your screen's frame rate.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="state">State<a class="headerlink" href="#state" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>active</code></td>
+<td><code>bool</code></td>
+<td>Read-only. True while a capture stream is running.</td>
+</tr>
+<tr>
+<td><code>suspended</code></td>
+<td><code>bool</code></td>
+<td>Read-only. True after Cleave stopped itself because the audio went quiet. See <a href="#auto-suspend">Auto-suspend</a>.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="methods">Methods<a class="headerlink" href="#methods" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>startCapture()</code></td>
+<td>Connects to PipeWire and starts analysing. Returns <code>true</code> on success. On failure it returns <code>false</code> and emits <code>error</code>. Calling it again restarts the stream.</td>
+</tr>
+<tr>
+<td><code>stopCapture()</code></td>
+<td>Stops the stream and clears the buffers. <code>active</code> and <code>suspended</code> both become <code>false</code>.</td>
+</tr>
+<tr>
+<td><code>resumeCapture()</code></td>
+<td>Restarts the capture and emits <code>suspendedChanged</code> if it had been suspended. Use this to wake Cleave up after an auto-suspend.</td>
+</tr>
+<tr>
+<td><code>reset()</code></td>
+<td>Zeroes all levels and clears the pending audio, without touching the stream.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="signals">Signals<a class="headerlink" href="#signals" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Signal</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>dataChanged()</code></td>
+<td>New levels are available. Emitted for <code>magnitudes</code>, <code>peaks</code> and <code>fps</code>.</td>
+</tr>
+<tr>
+<td><code>activeChanged()</code></td>
+<td><code>active</code> changed.</td>
+</tr>
+<tr>
+<td><code>suspendedChanged()</code></td>
+<td><code>suspended</code> changed.</td>
+</tr>
+<tr>
+<td><code>error(string msg)</code></td>
+<td>Something failed: creating the PipeWire loop or stream, connecting, or a stream error while running.</td>
+</tr>
+</tbody>
+</table>
+<p>The other <code>...Changed</code> signals (<code>bandCountChanged</code>, <code>smoothingChanged</code>, <code>peakDecayChanged</code>, <code>silenceThresholdChanged</code>, <code>sourceChanged</code>, <code>debugModeChanged</code>) work as usual.</p>
+<h2 id="how-it-works">How it works<a class="headerlink" href="#how-it-works" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Cleave asks PipeWire for a mono, 32-bit float stream at 48 kHz.</li>
+<li>Audio is cut into windows of 2048 samples, shaped with a Hann window and run through an FFT. Windows overlap by half, so you get up to about 47 updates per second.</li>
+<li>The bands are spaced logarithmically from about 70 Hz to about 16 kHz, so the bass gets as much room as the treble. Higher bands are boosted slightly to even out the natural tilt of music.</li>
+<li>Each band is smoothed with <code>smoothing</code> and tracked with a falling peak.</li>
+</ul>
+<p>The first few bands are the bass, which is what makes a kick drum thump.</p>
+<h2 id="choosing-a-source">Choosing a source<a class="headerlink" href="#choosing-a-source" title="Permanent link">&para;</a></h2>
+<p>By default Cleave captures the <strong>default output</strong>, so it reacts to whatever you are playing. To pick something else, set <code>source</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="nx">Cleave</span> <span class="p">{</span>
+    <span class="k">source:</span> <span class="s2">"alsa_output.pci-0000_00_1f.3.analog-stereo.monitor"</span>
+<span class="p">}</span>
+</code></pre></div>
+<ul>
+<li>A name ending in <code>.monitor</code> means "capture what this output is playing".</li>
+<li>Any other name targets that node directly, for example a microphone.</li>
+</ul>
+<p>To find the names on your system, run <code>pactl list short sources</code> or <code>pw-cli ls Node</code>.</p>
+<h2 id="auto-suspend">Auto-suspend<a class="headerlink" href="#auto-suspend" title="Permanent link">&para;</a></h2>
+<p>To avoid burning CPU on silence, Cleave stops itself after the sound has been quiet for 3 seconds:</p>
+<ol>
+<li>The sound stops. The levels fall to zero at the rate set by <code>peakDecay</code>.</li>
+<li>After 3 seconds the stream is closed, <code>active</code> becomes <code>false</code> and <code>suspended</code> becomes <code>true</code>.</li>
+<li><strong>Nothing wakes it up automatically.</strong> You have to call <code>resumeCapture()</code> when audio comes back.</li>
+</ol>
+<p>The usual way is to listen for your player's playing state:</p>
+<div class="highlight"><pre><span></span><code><span class="nx">Cleave</span> <span class="p">{</span>
+    <span class="kd">id: cleave</span>
+    <span class="k">Component.onCompleted:</span> <span class="nx">startCapture</span><span class="p">()</span>
+<span class="p">}</span>
+
+<span class="nx">Connections</span> <span class="p">{</span>
+    <span class="k">target:</span> <span class="nx">player</span>
+
+    <span class="kd">function</span> <span class="nx">onPlayingChanged</span><span class="p">()</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="nx">player</span><span class="p">.</span><span class="nx">playing</span> <span class="o">&amp;&amp;</span> <span class="nx">cleave</span><span class="p">.</span><span class="nx">suspended</span><span class="p">)</span>
+            <span class="nx">cleave</span><span class="p">.</span><span class="nx">resumeCapture</span><span class="p">()</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>Here <code>player</code> is whatever you already use to know that music is playing, such as an MPRIS player.</p>
+<h2 id="more-snippets">More snippets<a class="headerlink" href="#more-snippets" title="Permanent link">&para;</a></h2>
+<h3 id="handling-errors">Handling errors<a class="headerlink" href="#handling-errors" title="Permanent link">&para;</a></h3>
+<p><code>startCapture()</code> returns <code>false</code> when it fails, and <code>error</code> carries the reason. This also covers stream errors that happen while running.</p>
+<div class="highlight"><pre><span></span><code><span class="nx">Cleave</span> <span class="p">{</span>
+    <span class="k">onError:</span> <span class="nx">msg</span> <span class="o">=&gt;</span> <span class="nx">console</span><span class="p">.</span><span class="nx">warn</span><span class="p">(</span><span class="s2">"Cleave:"</span><span class="p">,</span> <span class="nx">msg</span><span class="p">)</span>
+    <span class="k">Component.onCompleted:</span> <span class="p">{</span>
+        <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="nx">startCapture</span><span class="p">())</span>
+            <span class="nx">console</span><span class="p">.</span><span class="nx">warn</span><span class="p">(</span><span class="s2">"could not start capture"</span><span class="p">)</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3 id="calmer-slower-response">Calmer, slower response<a class="headerlink" href="#calmer-slower-response" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nx">Cleave</span> <span class="p">{</span>
+    <span class="k">smoothing:</span> <span class="mf">0.9</span>
+    <span class="k">peakDecay:</span> <span class="mf">0.005</span>
+    <span class="k">Component.onCompleted:</span> <span class="nx">startCapture</span><span class="p">()</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3 id="start-and-stop-with-a-button">Start and stop with a button<a class="headerlink" href="#start-and-stop-with-a-button" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nx">Cleave</span> <span class="p">{</span>
+    <span class="kd">id: cleave</span>
+<span class="p">}</span>
+
+<span class="nx">Button</span> <span class="p">{</span>
+    <span class="k">text:</span> <span class="nx">cleave</span><span class="p">.</span><span class="nx">active</span> <span class="o">?</span> <span class="s2">"Stop"</span> <span class="o">:</span> <span class="s2">"Start"</span>
+    <span class="k">onClicked:</span> <span class="nx">cleave</span><span class="p">.</span><span class="nx">active</span> <span class="o">?</span> <span class="nx">cleave</span><span class="p">.</span><span class="nx">stopCapture</span><span class="p">()</span> <span class="o">:</span> <span class="nx">cleave</span><span class="p">.</span><span class="nx">startCapture</span><span class="p">()</span>
+<span class="p">}</span>
+</code></pre></div>
+<h2 id="notes">Notes<a class="headerlink" href="#notes" title="Permanent link">&para;</a></h2>
+<div class="admonition warning">
+<p class="admonition-title">Scale the levels yourself</p>
+<p><code>magnitudes</code> are not clamped to 0..1. How big they get depends on the volume and the content, so apply your own gain and clamp, as the example does with <code>* 5</code>. Try a few values until your visual looks right.</p>
+</div>
+<div class="admonition warning">
+<p class="admonition-title">Read <code>magnitudes</code> once per frame</p>
+<p><code>magnitudes</code> and <code>peaks</code> build a new list every time you read them. In a paint handler, copy the list once (<code>const m = cleave.magnitudes</code>) and index the copy, rather than writing <code>cleave.magnitudes[i]</code> inside a loop. If you use a <code>Repeater</code>, give it <code>model: cleave.bandCount</code> instead of binding it to <code>magnitudes</code>, which can rebuild every delegate on every update.</p>
+</div>
+<ul>
+<li><strong>Repainting:</strong> call <code>requestPaint()</code> from <code>onDataChanged</code>, as the example does. Updates come at the analysis rate, up to about 47 per second.</li>
+<li><strong><code>startCapture()</code> vs <code>resumeCapture()</code>:</strong> after an auto-suspend, use <code>resumeCapture()</code>. Calling <code>startCapture()</code> works too, but it does not emit <code>suspendedChanged</code>, so bindings on <code>suspended</code> would not update.</li>
+<li><strong>Changing <code>source</code> while running</strong> has no effect until the next <code>startCapture()</code>.</li>
+<li><strong>Changing <code>bandCount</code></strong> zeroes the levels, so it is best set once up front.</li>
+<li><strong>Silent frames are skipped:</strong> raise <code>silenceThreshold</code> if background hiss keeps your visual twitching.</li>
+<li><strong>Threading:</strong> audio is captured on the PipeWire thread and handed to the main thread, so all signals and properties are safe to use from QML.</li>
+<li><strong>Many bands cost more:</strong> every <code>dataChanged</code> re-evaluates anything bound to <code>magnitudes</code>, so keep <code>bandCount</code> reasonable.</li>
+<li><strong>Requirements:</strong> PipeWire (<code>pipewire</code> on Arch). The AUR packages pull it in for you.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../../shapes/material-shape/" class="md-footer__link md-footer__link--prev" aria-label="Previous: MaterialShape">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                MaterialShape
+              </div>
+            </div>
+          </a>
+        
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+      <div class="md-progress" data-md-component="progress" role="progressbar"></div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.instant.progress", "navigation.tabs", "navigation.tabs.sticky", "navigation.sections", "navigation.top", "navigation.footer", "toc.follow", "search.suggest", "search.highlight", "content.code.copy", "content.tabs.link"], "search": "../../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.c21346df.min.js"></script>
+      
+    
+  </body>
+</html>
