@@ -2,6 +2,7 @@
 #include "../Core/sgitem.hpp"
 #include <QColor>
 #include <QFont>
+#include <QHoverEvent>
 #include <QImage>
 #include <QKeyEvent>
 #include <QList>
@@ -135,6 +136,9 @@ signals:
   void toggled(int index, bool checked);
 
 protected:
+  void hoverEnterEvent(QHoverEvent *e) override;
+  void hoverMoveEvent(QHoverEvent *e) override;
+  void hoverLeaveEvent(QHoverEvent *e) override;
   void build(Ryu::Mesh &m) override;
   bool advance(qreal dt) override;
   QSGNode *updatePaintNode(QSGNode *old, UpdatePaintNodeData *d) override;

@@ -230,6 +230,7 @@ void MaterialMenu::setOpen(bool v) {
     forceActiveFocus();
   } else {
     setCurrent(-1);
+    setHand(false);
   }
 
   m_pop.t = v ? 1.0 : 0.0;
@@ -404,12 +405,15 @@ void MaterialMenu::hoverMoveEvent(QHoverEvent *e) {
   if (m_layoutDirty)
     layoutItems();
   const int i = rowAt(e->position());
-  setCurrent(selectable(i) ? i : -1);
+  const bool ok = selectable(i);
+  setCurrent(ok ? i : -1);
+  setHand(ok);
 }
 
 void MaterialMenu::hoverLeaveEvent(QHoverEvent *e) {
   QQuickItem::hoverLeaveEvent(e);
   setCurrent(-1);
+  setHand(false);
 }
 
 void MaterialMenu::keyPressEvent(QKeyEvent *e) {

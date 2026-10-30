@@ -22,6 +22,8 @@ constexpr qreal kPressGrow = 0.28;
 MaterialButtonGroup::MaterialButtonGroup(QQuickItem *parent)
     : SgMaterialItem(parent, 520.0, 0.5) {
   setAcceptedMouseButtons(Qt::LeftButton);
+  setAcceptHoverEvents(true);
+  setActiveFocusOnTab(true);
   setActiveFocusOnTab(true);
   structureChanged();
 }
@@ -135,6 +137,7 @@ QVector<QRectF> MaterialButtonGroup::displayRects() const {
 }
 
 void MaterialButtonGroup::structureChanged() {
+  setHand(false);
   m_layoutDirty = true;
   m_metricsDirty = true;
   setImplicitWidth(std::ceil(naturalWidth()));
@@ -410,7 +413,24 @@ void MaterialButtonGroup::mouseUngrabEvent() {
   retarget();
   update();
 }
+void MaterialButtonGroup::hoverEnterEvent(QHoverEvent *e) {
+  QQuickItem::hoverEnterEvent(e);
+  hoverMoveEvent(e);
+}
 
+void MaterialButtonGroup::hoverMoveEvent(QHoverEvent *e) {
+  QQuickItem::hoverMoveEvent(e);
+  if (!isEnabled())
+    return;
+  if (m_layoutDirty)
+    layoutItems();
+  setHand(hit(e->position()) >= 0);
+}
+
+void MaterialButtonGroup::hoverLeaveEvent(QHoverEvent *e) {
+  QQuickItem::hoverLeaveEvent(e);
+  setHand(false);
+}
 void MaterialButtonGroup::keyPressEvent(QKeyEvent *e) {
   if (!isEnabled() || count() == 0) {
     e->ignore();
