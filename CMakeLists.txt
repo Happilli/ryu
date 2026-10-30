@@ -205,6 +205,8 @@ ryu_module(Extraa
         Extraa/materialradiobutton.cpp
         Extraa/materialsegmentedbutton.hpp
         Extraa/materialsegmentedbutton.cpp
+        Extraa/materialbutton.hpp
+        Extraa/materialbutton.cpp
     LIBS
         Qt6::Quick
         RyuCore
