@@ -335,7 +335,8 @@ SgItem::SgItem(QQuickItem *parent) : QQuickItem(parent) {
   setFlag(ItemHasContents, true);
 }
 
-SgItem::~SgItem() {}
+SgItem::~SgItem() { setHand(false); }
+
 qreal SgItem::dpr() const {
   return window() ? window()->effectiveDevicePixelRatio() : 1.0;
 }
@@ -345,9 +346,9 @@ void SgItem::setHand(bool on) {
     return;
   m_handOn = on;
   if (on)
-    setCursor(Qt::PointingHandCursor);
+    QGuiApplication::setOverrideCursor(QCursor(Qt::PointingHandCursor));
   else
-    unsetCursor();
+    QGuiApplication::restoreOverrideCursor();
 }
 
 void SgItem::itemChange(ItemChange change, const ItemChangeData &data) {
