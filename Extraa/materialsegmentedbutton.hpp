@@ -1,5 +1,6 @@
 #pragma once
 #include "../Core/sgitem.hpp"
+#include "../Core/paintutil.hpp"
 #include <QColor>
 #include <QFocusEvent>
 #include <QFont>
@@ -9,6 +10,7 @@
 #include <QMouseEvent>
 #include <QRectF>
 #include <QStringList>
+#include <QUrl>
 #include <QVector>
 
 class MaterialSegmentedButton : public SgMaterialItem {
@@ -46,6 +48,8 @@ class MaterialSegmentedButton : public SgMaterialItem {
                  textColorChanged)
   Q_PROPERTY(QColor checkedTextColor READ checkedTextColor WRITE
                  setCheckedTextColor NOTIFY checkedTextColorChanged)
+  Q_PROPERTY(QUrl checkIconSource READ checkIconSource WRITE setCheckIconSource
+                 NOTIFY checkIconSourceChanged)
 
 public:
   enum SelectionMode { Single, Multiple };
@@ -72,7 +76,9 @@ public:
   QColor checkedColor() const { return m_checkedColor; }
   QColor textColor() const { return m_textColor; }
   QColor checkedTextColor() const { return m_checkedTextColor; }
+  QUrl checkIconSource() const { return m_checkIconSource; }
 
+  void setCheckIconSource(const QUrl &v);
   void setLabels(const QStringList &v);
   void setIcons(const QStringList &v);
   void setFont(const QFont &v);
@@ -96,6 +102,7 @@ public:
   Q_INVOKABLE void setChecked(int i, bool on);
 
 signals:
+  void checkIconSourceChanged();
   void labelsChanged();
   void iconsChanged();
   void fontChanged();
@@ -141,6 +148,8 @@ private:
   int hit(const QPointF &pt) const;
   int stepFocus(int from, int dir) const;
   void activate(int i);
+  qreal targetWidth(int i) const;
+  void kick(int i);
   void retarget(bool immediate = false);
 
   QStringList m_labels;
@@ -155,6 +164,10 @@ private:
   bool m_fillWidth = false;
   qreal m_borderWidth = 1.0;
   QColor m_borderColor = QColor("#79747E");
+
+  QUrl m_checkIconSource;
+  QString m_checkPath;
+  Ryu::IconCache m_checkCache;
 
   QColor m_color = QColor(Qt::transparent);
   QColor m_checkedColor = QColor("#E8DEF8");
@@ -171,5 +184,5 @@ private:
 
   QVector<Spring> m_fill;
   QVector<Spring> m_check;
-  QVector<Spring> m_press;
+  QVector<Spring> m_width;
 };

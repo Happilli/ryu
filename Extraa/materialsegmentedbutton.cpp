@@ -13,9 +13,11 @@ constexpr qreal kIcon = 18.0;
 constexpr qreal kGap = 8.0;
 constexpr qreal kFontPx = 14.0;
 constexpr qreal kCheckStiffness = 0.9;
-constexpr qreal kPressStiffness = 1.4;
+constexpr qreal kWidthStiffness = 1.2;
+constexpr qreal kPressGrow = 0.28;
+constexpr qreal kPopKick = 180.0;
 constexpr qreal kMarkW = 2.0;
-constexpr int kSlots = 2;
+constexpr int kSlots = 3;
 const QPointF kCheckA(-4.5, 0.5);
 const QPointF kCheckB(-1.5, 3.5);
 const QPointF kCheckC(4.5, -3.5);
@@ -87,7 +89,8 @@ QVector<QRectF> MaterialSegmentedButton::layoutRects() const {
   const qreal y = std::round((height() - kHeight) / 2.0);
   qreal x = 0.0;
   for (int i = 0; i < n; ++i) {
-    const qreal w = m_fillWidth ? width() / n : segmentWidth(i);
+    const qreal base = m_fillWidth ? width() / n : segmentWidth(i);
+    const qreal w = std::max(1.0, base + m_width.value(i).x);
     out[i] = QRectF(x, y, w, kHeight);
     x += w;
   }
@@ -112,19 +115,45 @@ void MaterialSegmentedButton::structureChanged() {
   update();
 }
 
+qreal MaterialSegmentedButton::targetWidth(int i) const {
+  const int n = count();
+  if (m_pressIndex < 0 || n < 2)
+    return 0.0;
+  const qreal g = kHeight * kPressGrow;
+  if (i == m_pressIndex)
+    return g;
+  const int nb = (m_pressIndex > 0 ? 1 : 0) + (m_pressIndex < n - 1 ? 1 : 0);
+  if (i == m_pressIndex - 1 || i == m_pressIndex + 1)
+    return -g / nb;
+  return 0.0;
+}
+
+void MaterialSegmentedButton::kick(int i) {
+  const int n = count();
+  if (i < 0 || i >= n || n < 2 || m_width.size() != n)
+    return;
+  const int nb = (i > 0 ? 1 : 0) + (i < n - 1 ? 1 : 0);
+  m_width[i].v += kPopKick;
+  if (i > 0)
+    m_width[i - 1].v -= kPopKick / nb;
+  if (i < n - 1)
+    m_width[i + 1].v -= kPopKick / nb;
+  animate();
+}
+
 void MaterialSegmentedButton::retarget(bool immediate) {
   const int n = count();
   if (m_fill.size() != n) {
     m_fill.resize(n);
     m_check.resize(n);
-    m_press.resize(n);
+    m_width.resize(n);
     immediate = true;
   }
   for (int i = 0; i < n; ++i) {
     const qreal on = isChecked(i) ? 1.0 : 0.0;
     m_fill[i].go(on, immediate);
     m_check[i].go(on, immediate);
-    m_press[i].go(m_pressIndex == i ? 1.0 : 0.0, immediate);
+    m_width[i].go(targetWidth(i), immediate);
   }
   if (!immediate)
     animate();
@@ -135,7 +164,7 @@ bool MaterialSegmentedButton::advance(qreal dt) {
   for (int i = 0; i < m_fill.size(); ++i) {
     active |= step(m_fill[i], dt);
     active |= step(m_check[i], dt, 0.001, kCheckStiffness);
-    active |= step(m_press[i], dt, 0.001, kPressStiffness);
+    active |= step(m_width[i], dt, 0.02, kWidthStiffness);
   }
   return active;
 }
@@ -173,7 +202,13 @@ void MaterialSegmentedButton::setSelectionMode(SelectionMode v) {
   emit checkedIndicesChanged();
   retarget();
 }
-
+void MaterialSegmentedButton::setCheckIconSource(const QUrl &v) {
+  if (assign(m_checkIconSource, v,
+             &MaterialSegmentedButton::checkIconSourceChanged)) {
+    m_checkPath.clear();
+    m_checkCache.invalidate();
+  }
+}
 void MaterialSegmentedButton::setCheckedIndices(const QList<int> &v) {
   const int n = count();
   QList<int> c = v;
@@ -285,6 +320,7 @@ void MaterialSegmentedButton::activate(int i) {
   }
 
   retarget();
+  kick(i);
   update();
   emit checkedIndicesChanged();
 
@@ -474,23 +510,43 @@ void MaterialSegmentedButton::build(Ryu::Mesh &m) {
       glyphLayer(i * kSlots, m_iconFont, ic, col, c, kIcon);
 
     if (m_showCheck && chkC > 0.01) {
-      const qreal k = kIcon / 18.0;
-      const qreal l1 = QLineF(kCheckA, kCheckB).length();
-      const qreal l2 = QLineF(kCheckB, kCheckC).length();
-      const qreal d = chkC * (l1 + l2);
-
-      auto map = [&](const QPointF &p) { return c + p * k; };
-
-      QList<QPointF> pts;
-      pts.append(map(kCheckA));
-      if (d <= l1) {
-        pts.append(map(kCheckA + (kCheckB - kCheckA) * (d / l1)));
+      if (!m_checkIconSource.isEmpty()) {
+        const qreal a =
+            std::round(std::clamp((chkC - 0.4) / 0.6, 0.0, 1.0) * 10.0) / 10.0;
+        if (a > 0.0) {
+          if (m_checkPath.isEmpty())
+            m_checkPath = Ryu::resolveUrl(qmlContext(this), m_checkIconSource);
+          const qreal dpr = m.dpr();
+          const QColor cc = Ryu::withAlpha(
+              m_checkedTextColor, m_checkedTextColor.alphaF() * a * dim);
+          const QString key = QStringLiteral("c|%1|%2|%3")
+                                  .arg(m_checkPath, cc.name(QColor::HexArgb))
+                                  .arg(dpr);
+          useLayer(
+              i * kSlots + 2, key,
+              QRectF(m.snap(c.x() - kIcon / 2.0), m.snap(c.y() - kIcon / 2.0),
+                     kIcon, kIcon),
+              [&] { return m_checkCache.get(m_checkPath, kIcon, dpr, cc); });
+        }
       } else {
-        pts.append(map(kCheckB));
-        pts.append(map(kCheckB + (kCheckC - kCheckB) * ((d - l1) / l2)));
+        const qreal k = kIcon / 18.0;
+        const qreal l1 = QLineF(kCheckA, kCheckB).length();
+        const qreal l2 = QLineF(kCheckB, kCheckC).length();
+        const qreal d = chkC * (l1 + l2);
+
+        auto map = [&](const QPointF &p) { return c + p * k; };
+
+        QList<QPointF> pts;
+        pts.append(map(kCheckA));
+        if (d <= l1) {
+          pts.append(map(kCheckA + (kCheckB - kCheckA) * (d / l1)));
+        } else {
+          pts.append(map(kCheckB));
+          pts.append(map(kCheckB + (kCheckC - kCheckB) * ((d - l1) / l2)));
+        }
+        m.polyline(pts, kMarkW * k,
+                   Ryu::withAlpha(mixed, mixed.alphaF() * chkC * dim));
       }
-      m.polyline(pts, kMarkW * k,
-                 Ryu::withAlpha(mixed, mixed.alphaF() * chkC * dim));
     }
 
     textLayer(i * kSlots + 1, lf, lbl, col, x0 + slotPart + gapPart, cy);
