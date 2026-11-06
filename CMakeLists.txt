@@ -12,7 +12,7 @@ else()
     option(RYU_INSTALL "Generate install rules" OFF)
 endif()
 
-set(RYU_ALL_MODULES "Cleave;Clipsh;Sqliter;Warsa;Shapes;Extraa;Widgets")
+set(RYU_ALL_MODULES "Cleave;Clipsh;Sqliter;Warsa;Shapes;Extraa;Widgets;Discord")
 set(RYU_MODULES "${RYU_ALL_MODULES}" CACHE STRING "Modules to build")
 
 foreach(m IN LISTS RYU_MODULES)
@@ -24,6 +24,9 @@ endforeach()
 set(RYU_QT_COMPONENTS Core Qml Gui Quick)
 if("Sqliter" IN_LIST RYU_MODULES)
     list(APPEND RYU_QT_COMPONENTS Sql)
+endif()
+if("Discord" IN_LIST RYU_MODULES)
+    list(APPEND RYU_QT_COMPONENTS Network)
 endif()
 find_package(Qt6 REQUIRED COMPONENTS ${RYU_QT_COMPONENTS})
 
@@ -138,6 +141,14 @@ ryu_module(Clipsh
     SOURCES
         Clipsh/clipsh.cpp
         Clipsh/clipsh.hpp
+)
+
+ryu_module(Discord
+    SOURCES
+        Discord/discord.cpp
+        Discord/discord.hpp
+    LIBS
+        Qt6::Network
 )
 
 ryu_module(Sqliter
