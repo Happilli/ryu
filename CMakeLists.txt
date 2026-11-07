@@ -218,6 +218,8 @@ ryu_module(Extraa
         Extraa/materialsegmentedbutton.cpp
         Extraa/materialbutton.hpp
         Extraa/materialbutton.cpp
+        Extraa/materialchip.hpp
+        Extraa/materialchip.cpp
     LIBS
         Qt6::Quick
         RyuCore
