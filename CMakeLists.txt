@@ -220,6 +220,8 @@ ryu_module(Extraa
         Extraa/materialbutton.cpp
         Extraa/materialchip.hpp
         Extraa/materialchip.cpp
+        Extraa/materialcarousel.hpp
+        Extraa/materialcarousel.cpp
     LIBS
         Qt6::Quick
         RyuCore
