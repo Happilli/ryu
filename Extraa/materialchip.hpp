@@ -66,6 +66,8 @@ class MaterialChip : public SgMaterialItem {
                  avatarColorChanged)
   Q_PROPERTY(QColor avatarTextColor READ avatarTextColor WRITE
                  setAvatarTextColor NOTIFY avatarTextColorChanged)
+  Q_PROPERTY(bool autoToggle READ autoToggle WRITE setAutoToggle NOTIFY
+                 autoToggleChanged)
 
 public:
   enum Type { Assist, Filter, Input, Suggestion };
@@ -101,7 +103,9 @@ public:
   qreal borderWidth() const { return m_borderWidth; }
   QColor avatarColor() const { return m_avatarColor; }
   QColor avatarTextColor() const { return m_avatarTextColor; }
+  bool autoToggle() const { return m_autoToggle; }
 
+  void setAutoToggle(bool v);
   void setLabel(const QString &v);
   void setType(Type v);
   void setElevated(bool v);
@@ -142,6 +146,7 @@ signals:
   void showCheckChanged();
   void pressedChanged();
   void hoveredChanged();
+  void autoToggleChanged();
   void fontChanged();
   void fontWeightChanged();
   void iconTextChanged();
@@ -219,6 +224,7 @@ private:
   bool m_checkable = false;
   bool m_closable = false;
   bool m_showCheck = true;
+  bool m_autoToggle = true;
 
   QFont m_font;
   int m_fontWeight = 500;

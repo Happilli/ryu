@@ -57,8 +57,8 @@ MaterialChip::MaterialChip(QQuickItem *parent)
 
 void MaterialChip::componentComplete() {
   SgMaterialItem::componentComplete();
-  updateImplicit();
   retarget(true);
+  updateImplicit();
   update();
 }
 
@@ -190,6 +190,9 @@ bool MaterialChip::advance(qreal dt) {
   active |= step(m_tpress, dt, 0.001, kPressStiffness);
   updateImplicit();
   return active;
+}
+void MaterialChip::setAutoToggle(bool v) {
+  assign(m_autoToggle, v, &MaterialChip::autoToggleChanged);
 }
 
 void MaterialChip::setLabel(const QString &v) {
@@ -374,10 +377,12 @@ void MaterialChip::activate(int zone) {
     return;
   }
   if (isToggle()) {
-    m_selected = !m_selected;
-    emit selectedChanged();
+    if (m_autoToggle) {
+      m_selected = !m_selected;
+      emit selectedChanged();
+      retarget();
+    }
     emit toggled();
-    retarget();
   }
   emit clicked();
   update();
