@@ -4,6 +4,8 @@
 #include <QtMath>
 #include <algorithm>
 #include <cstring>
+#include <sys/eventfd.h>
+#include <unistd.h>
 
 static void fftInPlace(float *re, float *im, int n) {
   for (int i = 1, j = 0; i < n; ++i) {
@@ -50,10 +52,18 @@ Cleave::Cleave(QObject *parent) : QObject(parent) {
 
   m_mag.resize(m_bandCount, 0.0f);
   m_pk.resize(m_bandCount, 0.0f);
-  m_pcmBuf.reserve(kBufCapSamples);
+  m_ring.assign(kRingCap, 0.0f);
   for (int i = 0; i < kFFTSize; ++i)
     m_win[i] = 0.5f * (1.0f - cosf(2.0f * float(M_PI) * i / (kFFTSize - 1)));
   m_fpsTimer = QDateTime::currentMSecsSinceEpoch();
+
+  m_eventFd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
+  if (m_eventFd >= 0) {
+    m_notifier = new QSocketNotifier(m_eventFd, QSocketNotifier::Read, this);
+    connect(m_notifier, &QSocketNotifier::activated, this, &Cleave::onWake);
+  } else {
+    qWarning("[Cleave] failed to create eventfd");
+  }
 
   m_idleTimer = new QTimer(this);
   m_idleTimer->setSingleShot(true);
@@ -61,7 +71,15 @@ Cleave::Cleave(QObject *parent) : QObject(parent) {
   connect(m_idleTimer, &QTimer::timeout, this, &Cleave::onIdleTimeout);
 }
 
-Cleave::~Cleave() { stopCapture(); }
+Cleave::~Cleave() {
+  stopCapture();
+  delete m_notifier;
+  m_notifier = nullptr;
+  if (m_eventFd >= 0) {
+    close(m_eventFd);
+    m_eventFd = -1;
+  }
+}
 
 QVariantList Cleave::magnitudes() const {
   QVariantList out;
@@ -105,12 +123,23 @@ void Cleave::teardownStream() {
   m_loop = nullptr;
 }
 
+void Cleave::clearRing() {
+  m_tail.store(m_head.load(std::memory_order_acquire),
+               std::memory_order_release);
+  m_pending.store(false, std::memory_order_release);
+  if (m_eventFd >= 0) {
+    uint64_t v;
+    while (read(m_eventFd, &v, sizeof(v)) > 0) {
+    }
+  }
+}
+
 bool Cleave::startCapture() {
   teardownStream();
   m_idleTimer->stop();
   m_suspended = false;
   m_silent = false;
-  m_pcmBuf.clear();
+  clearRing();
 
   m_loop = pw_thread_loop_new("cleave-capture", nullptr);
   if (!m_loop) {
@@ -197,7 +226,7 @@ bool Cleave::startCapture() {
 void Cleave::stopCapture() {
   m_idleTimer->stop();
   teardownStream();
-  m_pcmBuf.clear();
+  clearRing();
   m_active = false;
   m_suspended = false;
   m_silent = false;
@@ -216,11 +245,34 @@ void Cleave::resumeCapture() {
 }
 
 void Cleave::reset() {
-  m_pcmBuf.clear();
+  clearRing();
   m_mag.fill(0.0f);
   m_pk.fill(0.0f);
   m_silent = false;
   emit dataChanged();
+}
+
+void Cleave::pushSamples(const float *samples, uint32_t n) {
+  const size_t head = m_head.load(std::memory_order_relaxed);
+  const size_t tail = m_tail.load(std::memory_order_acquire);
+  const size_t space = kRingCap - (head - tail);
+  const size_t count = std::min<size_t>(n, space);
+
+  if (count > 0) {
+    const size_t pos = head & kRingMask;
+    const size_t first = std::min(count, kRingCap - pos);
+    std::memcpy(m_ring.data() + pos, samples, first * sizeof(float));
+    if (count > first)
+      std::memcpy(m_ring.data(), samples + first,
+                  (count - first) * sizeof(float));
+    m_head.store(head + count, std::memory_order_release);
+  }
+
+  if (!m_pending.exchange(true, std::memory_order_acq_rel) && m_eventFd >= 0) {
+    const uint64_t one = 1;
+    const ssize_t r = write(m_eventFd, &one, sizeof(one));
+    (void)r;
+  }
 }
 
 void Cleave::onProcess(void *userdata) {
@@ -229,18 +281,11 @@ void Cleave::onProcess(void *userdata) {
   if (!b)
     return;
 
-  struct spa_buffer *buf = b->buffer;
-  if (buf->datas[0].data && buf->datas[0].chunk->size > 0) {
-    const float *samples = static_cast<const float *>(buf->datas[0].data);
-    uint32_t n_samples = buf->datas[0].chunk->size / sizeof(float);
-
-    QVector<float> chunk(samples, samples + n_samples);
-    QMetaObject::invokeMethod(
-        self,
-        [self, chunk = std::move(chunk)]() {
-          self->processPCM(chunk.constData(), chunk.size());
-        },
-        Qt::QueuedConnection);
+  const struct spa_data &d = b->buffer->datas[0];
+  if (d.data && d.chunk->size > 0) {
+    const auto *base = static_cast<const uint8_t *>(d.data) + d.chunk->offset;
+    self->pushSamples(reinterpret_cast<const float *>(base),
+                      d.chunk->size / sizeof(float));
   }
 
   pw_stream_queue_buffer(self->m_stream, b);
@@ -265,17 +310,37 @@ void Cleave::onStreamStateChanged(void *userdata, enum pw_stream_state,
 
 void Cleave::onParamChanged(void *, uint32_t, const struct spa_pod *) {}
 
-void Cleave::processPCM(const float *samples, uint32_t n_samples) {
-  m_pcmBuf.insert(m_pcmBuf.end(), samples, samples + n_samples);
-  if (m_pcmBuf.size() > size_t(kBufCapSamples))
-    m_pcmBuf.erase(m_pcmBuf.begin(),
-                   m_pcmBuf.begin() + (m_pcmBuf.size() - kBufCapSamples));
+void Cleave::onWake() {
+  m_pending.store(false, std::memory_order_release);
+  if (m_eventFd >= 0) {
+    uint64_t v;
+    while (read(m_eventFd, &v, sizeof(v)) > 0) {
+    }
+  }
 
+  const size_t head = m_head.load(std::memory_order_acquire);
+  size_t tail = m_tail.load(std::memory_order_relaxed);
+  size_t avail = head - tail;
+
+  if (avail > size_t(kBufCapSamples)) {
+    tail = head - kBufCapSamples;
+    avail = kBufCapSamples;
+  }
+
+  bool processed = false;
   bool anySound = false;
 
-  while (m_pcmBuf.size() >= size_t(kFFTSize)) {
-    std::memcpy(m_re, m_pcmBuf.data(), kFrameBytes);
-    m_pcmBuf.erase(m_pcmBuf.begin(), m_pcmBuf.begin() + kHalf);
+  while (avail >= size_t(kFFTSize)) {
+    const size_t pos = tail & kRingMask;
+    const size_t first = std::min<size_t>(kFFTSize, kRingCap - pos);
+    std::memcpy(m_re, m_ring.data() + pos, first * sizeof(float));
+    if (first < size_t(kFFTSize))
+      std::memcpy(m_re + first, m_ring.data(),
+                  (kFFTSize - first) * sizeof(float));
+
+    tail += kHalf;
+    avail -= kHalf;
+    processed = true;
 
     float rms = 0.0f;
     for (int i = 0; i < kFFTSize; ++i)
@@ -288,6 +353,8 @@ void Cleave::processPCM(const float *samples, uint32_t n_samples) {
     runFFT();
   }
 
+  m_tail.store(tail, std::memory_order_release);
+
   if (anySound) {
     m_silent = false;
     m_suspended = false;
@@ -296,7 +363,7 @@ void Cleave::processPCM(const float *samples, uint32_t n_samples) {
     return;
   }
 
-  if (m_silent)
+  if (!processed || m_silent)
     return;
 
   bool stillActive = false;
@@ -315,7 +382,7 @@ void Cleave::onIdleTimeout() {
   if (m_debugMode)
     qDebug("[Cleave] idle -- suspending stream");
   teardownStream();
-  m_pcmBuf.clear();
+  clearRing();
   std::fill(m_re, m_re + kFFTSize, 0.0f);
   std::fill(m_im, m_im + kFFTSize, 0.0f);
   m_mag.fill(0.0f);

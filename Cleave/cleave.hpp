@@ -1,10 +1,14 @@
 #pragma once
 #include <QObject>
+#include <QSocketNotifier>
 #include <QString>
 #include <QTimer>
 #include <QVariant>
 #include <QVector>
 #include <QtQmlIntegration/qqmlintegration.h>
+#include <atomic>
+#include <cstddef>
+#include <cstdint>
 #include <vector>
 
 extern "C" {
@@ -92,9 +96,11 @@ signals:
 
 private slots:
   void onIdleTimeout();
+  void onWake();
 
 private:
-  void processPCM(const float *samples, uint32_t n_samples);
+  void pushSamples(const float *samples, uint32_t n);
+  void clearRing();
   void runFFT();
   void teardownStream();
 
@@ -109,7 +115,14 @@ private:
   static constexpr int kHalf = kFFTSize / 2;
   static constexpr int kFrameBytes = kFFTSize * sizeof(float);
   static constexpr int kBufCapSamples = kFFTSize * 32;
+  static constexpr size_t kRingCap = size_t(1) << 17;
+  static constexpr size_t kRingMask = kRingCap - 1;
   static constexpr int kIdleMs = 3000;
+
+  static_assert((kRingCap & (kRingCap - 1)) == 0,
+                "ring capacity must be a power of two");
+  static_assert(kRingCap >= size_t(kBufCapSamples),
+                "ring must hold the capped buffer");
 
   int m_bandCount = 32;
   float m_peakDecay = 0.02f;
@@ -129,7 +142,13 @@ private:
   QVector<float> m_mag;
   QVector<float> m_pk;
 
-  std::vector<float> m_pcmBuf;
+  std::vector<float> m_ring;
+  alignas(64) std::atomic<size_t> m_head{0};
+  alignas(64) std::atomic<size_t> m_tail{0};
+  std::atomic<bool> m_pending{false};
+
+  int m_eventFd = -1;
+  QSocketNotifier *m_notifier = nullptr;
 
   float m_re[kFFTSize];
   float m_im[kFFTSize];
