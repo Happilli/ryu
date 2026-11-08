@@ -8,6 +8,9 @@
 #include <QKeyEvent>
 #include <QList>
 #include <QMouseEvent>
+#include <QPointer>
+#include <QQmlComponent>
+#include <QQuickItem>
 #include <QRectF>
 #include <QString>
 #include <QVariant>
@@ -27,6 +30,23 @@ class MaterialList : public SgMaterialItem {
                  setCheckedIndices NOTIFY checkedIndicesChanged)
   Q_PROPERTY(int currentIndex READ currentIndex WRITE setCurrentIndex NOTIFY
                  checkedIndicesChanged)
+
+  Q_PROPERTY(QQmlComponent *contentDelegate READ contentDelegate WRITE
+                 setContentDelegate NOTIFY contentDelegateChanged)
+  Q_PROPERTY(ExpandTrigger expandTrigger READ expandTrigger WRITE
+                 setExpandTrigger NOTIFY expandTriggerChanged)
+  Q_PROPERTY(bool singleExpand READ singleExpand WRITE setSingleExpand NOTIFY
+                 singleExpandChanged)
+  Q_PROPERTY(QList<int> expandedIndices READ expandedIndices WRITE
+                 setExpandedIndices NOTIFY expandedIndicesChanged)
+  Q_PROPERTY(qreal contentPadding READ contentPadding WRITE setContentPadding
+                 NOTIFY contentPaddingChanged)
+  Q_PROPERTY(
+      bool animated READ animated WRITE setAnimated NOTIFY animatedChanged)
+  Q_PROPERTY(bool showChevron READ showChevron WRITE setShowChevron NOTIFY
+                 showChevronChanged)
+  Q_PROPERTY(QColor chevronColor READ chevronColor WRITE setChevronColor NOTIFY
+                 chevronColorChanged)
 
   Q_PROPERTY(QFont font READ font WRITE setFont NOTIFY fontChanged)
   Q_PROPERTY(
@@ -56,6 +76,8 @@ public:
   Q_ENUM(Variant)
   enum SelectionMode { NoSelection, Single, Multiple };
   Q_ENUM(SelectionMode)
+  enum ExpandTrigger { Auto, Header, Chevron };
+  Q_ENUM(ExpandTrigger)
 
   explicit MaterialList(QQuickItem *parent = nullptr);
 
@@ -67,6 +89,16 @@ public:
   int currentIndex() const {
     return m_checked.isEmpty() ? -1 : m_checked.first();
   }
+
+  QQmlComponent *contentDelegate() const { return m_delegate.data(); }
+  ExpandTrigger expandTrigger() const { return m_trigger; }
+  bool singleExpand() const { return m_singleExpand; }
+  QList<int> expandedIndices() const;
+  qreal contentPadding() const { return m_contentPad; }
+  bool animated() const { return m_animated; }
+  bool showChevron() const { return m_showChevron; }
+  QColor chevronColor() const { return m_chevronColor; }
+
   QFont font() const { return m_font; }
   QFont iconFont() const { return m_iconFont; }
   QColor itemColor() const { return m_itemColor; }
@@ -84,6 +116,16 @@ public:
   void setSelectionMode(SelectionMode v);
   void setCheckedIndices(const QList<int> &v);
   void setCurrentIndex(int i);
+
+  void setContentDelegate(QQmlComponent *c);
+  void setExpandTrigger(ExpandTrigger v);
+  void setSingleExpand(bool v);
+  void setExpandedIndices(const QList<int> &v);
+  void setContentPadding(qreal v);
+  void setAnimated(bool v);
+  void setShowChevron(bool v);
+  void setChevronColor(const QColor &v);
+
   void setFont(const QFont &v);
   void setIconFont(const QFont &v);
   void setItemColor(const QColor &v);
@@ -98,12 +140,26 @@ public:
 
   Q_INVOKABLE bool isChecked(int i) const { return m_checked.contains(i); }
   Q_INVOKABLE void setChecked(int i, bool on);
+  Q_INVOKABLE bool isExpanded(int i) const;
+  Q_INVOKABLE void setExpanded(int i, bool on);
+  Q_INVOKABLE void toggleExpanded(int i);
+  Q_INVOKABLE void expandAll();
+  Q_INVOKABLE void collapseAll();
+  Q_INVOKABLE QQuickItem *contentItem(int i) const;
 
 signals:
   void modelChanged();
   void variantChanged();
   void selectionModeChanged();
   void checkedIndicesChanged();
+  void contentDelegateChanged();
+  void expandTriggerChanged();
+  void singleExpandChanged();
+  void expandedIndicesChanged();
+  void contentPaddingChanged();
+  void animatedChanged();
+  void showChevronChanged();
+  void chevronColorChanged();
   void fontChanged();
   void iconFontChanged();
   void itemColorChanged();
@@ -116,6 +172,7 @@ signals:
   void avatarTextColorChanged();
   void dividerColorChanged();
   void clicked(int index, const QVariant &item);
+  void expandedChanged(int index, bool expanded);
 
 protected:
   void build(Ryu::Mesh &m) override;
@@ -141,8 +198,11 @@ private:
     QString trailingIcon;
     QString avatarText;
     QImage image;
+    QPointer<QQmlComponent> delegate;
     bool divider = false;
     bool enabled = true;
+    bool expandable = false;
+    bool expanded = false;
 
     int lines() const {
       return int(!overline.isEmpty()) + int(!headline.isEmpty()) +
@@ -150,24 +210,56 @@ private:
     }
   };
 
+  struct Row {
+    Spring open;
+    bool expanded = false;
+    QQuickItem *clip = nullptr;
+    QQuickItem *content = nullptr;
+  };
+
   QColor resolvedItemColor() const;
-  qreal rowHeight(const Entry &e) const;
+  qreal headerHeight(const Entry &e) const;
+  qreal rowHeight(int i) const;
   qreal itemGap() const;
   qreal naturalHeight() const;
+  qreal contentNatural(int i) const;
+  QRectF headerRect(int i) const;
   void layoutItems();
   void structureChanged();
+  void relayout();
+  void positionContent();
   bool selectable(int i) const;
+  bool expandable(int i) const;
+  bool canToggle(int i) const;
+  ExpandTrigger effectiveTrigger() const;
+  bool chevronZone(int i, const QPointF &pt) const;
   int rowAt(const QPointF &pt) const;
   int step(int from, int dir) const;
   void activate(int i);
+  QQmlComponent *delegateFor(int i) const;
+  void ensureContent(int i);
+  void destroyContent(int i);
+  void destroyAllContent();
+  bool applyExpanded(int i, bool on);
+  void finishExpansion();
+  bool contentHasFocus() const;
 
   QVariantList m_raw;
   QVector<Entry> m_items;
+  QVector<Row> m_rows;
   int m_gen = 0;
 
   Variant m_variant = Standard;
   SelectionMode m_mode = NoSelection;
   QList<int> m_checked;
+
+  QPointer<QQmlComponent> m_delegate;
+  ExpandTrigger m_trigger = Auto;
+  bool m_singleExpand = false;
+  qreal m_contentPad = 16.0;
+  bool m_animated = true;
+  bool m_showChevron = true;
+  QColor m_chevronColor;
 
   QFont m_font;
   QFont m_iconFont;
@@ -184,11 +276,16 @@ private:
 
   QVector<QRectF> m_rects;
   bool m_layoutDirty = true;
+  bool m_relaying = false;
+  bool m_relayAgain = false;
+  bool m_wasMoving = false;
 
   int m_pressIndex = -1;
   int m_pressShown = -1;
   int m_hoverIndex = -1;
   int m_focusIndex = -1;
+  bool m_pressChevron = false;
+  bool m_hoverChevron = false;
   bool m_keyFocus = false;
 
   Spring m_press;
