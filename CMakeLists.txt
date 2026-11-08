@@ -12,7 +12,7 @@ else()
     option(RYU_INSTALL "Generate install rules" OFF)
 endif()
 
-set(RYU_ALL_MODULES "Cleave;Clipsh;Sqliter;Warsa;Shapes;Extraa;Widgets;Discord")
+set(RYU_ALL_MODULES "Cleave;Clipsh;Sqliter;Warsa;Shapes;Extraa;Widgets;Discord;Network")
 set(RYU_MODULES "${RYU_ALL_MODULES}" CACHE STRING "Modules to build")
 
 foreach(m IN LISTS RYU_MODULES)
@@ -27,6 +27,9 @@ if("Sqliter" IN_LIST RYU_MODULES)
 endif()
 if("Discord" IN_LIST RYU_MODULES)
     list(APPEND RYU_QT_COMPONENTS Network)
+endif()
+if("Network" IN_LIST RYU_MODULES)
+    list(APPEND RYU_QT_COMPONENTS DBus)
 endif()
 find_package(Qt6 REQUIRED COMPONENTS ${RYU_QT_COMPONENTS})
 
@@ -149,6 +152,14 @@ ryu_module(Discord
         Discord/discord.hpp
     LIBS
         Qt6::Network
+)
+
+ryu_module(Network
+    SOURCES
+        Network/iwd.cpp
+        Network/iwd.hpp
+    LIBS
+        Qt6::DBus
 )
 
 ryu_module(Sqliter

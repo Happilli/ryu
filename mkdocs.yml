@@ -64,5 +64,7 @@ nav:
       - MaterialShape: shapes/material-shape.md
   - Cleave:
       - Cleave: cleave/cleave.md
+  - Network:
+      - Iwd: network/iwd.md
 extra:
   generator: false

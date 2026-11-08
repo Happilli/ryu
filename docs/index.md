@@ -12,7 +12,8 @@ It is a personal project. It works on my machine. Your machine is a side quest.
 |---|---|---|
 | **Extraa** | Material 3 widgets: `WavyProgress`, `MaterialSlider`, `MaterialIconButton`, `MaterialButtonGroup` | Partly |
 | **Shapes** | `MaterialShape`, with 35 shapes that morph into each other using springs | Yes |
-| **Cleave** | Audio visualizer. PipeWire in, FFT out, bars go brrr | Soon™ |
+| **Cleave** | Audio visualizer. PipeWire in, FFT out, bars go brrr | Yes |
+| **Network** | Wi-Fi backend for iwd. Scan, connect, saved networks and a password agent | Yes |
 | **Clipsh** | Clipboard history on top of `cliphist` and `wl-copy` | Soon™ |
 | **Sqliter** | SQLite-backed events storage | Soon™ |
 | **Warsa** | Nepali (BS) calendar logic | Soon™ |
