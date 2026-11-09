@@ -13,7 +13,7 @@ else()
 endif()
 
 
-set(RYU_ALL_MODULES "Cleave;Clipsh;Sqliter;Warsa;Shapes;Extraa;Widgets;Discord;Network;Mpris;Power;Notifications;Io;Pam;Audio;Hyprland;Polkit")
+set(RYU_ALL_MODULES "Cleave;Clipsh;Sqliter;Warsa;Shapes;Extraa;Widgets;Discord;Network;Mpris;Power;Notifications;Io;Pam;Audio;Hyprland;Polkit;Ipc")
 set(RYU_MODULES "${RYU_ALL_MODULES}" CACHE STRING "Modules to build")
 
 foreach(m IN LISTS RYU_MODULES)
@@ -26,7 +26,7 @@ set(RYU_QT_COMPONENTS Core Qml Gui Quick)
 if("Sqliter" IN_LIST RYU_MODULES)
     list(APPEND RYU_QT_COMPONENTS Sql)
 endif()
-if("Discord" IN_LIST RYU_MODULES OR "Hyprland" IN_LIST RYU_MODULES OR "Polkit" IN_LIST RYU_MODULES)
+if("Discord" IN_LIST RYU_MODULES OR "Hyprland" IN_LIST RYU_MODULES OR "Polkit" IN_LIST RYU_MODULES OR "Ipc" IN_LIST RYU_MODULES)
     list(APPEND RYU_QT_COMPONENTS Network)
 endif()
 if("Network" IN_LIST RYU_MODULES OR "Mpris" IN_LIST RYU_MODULES OR "Power" IN_LIST RYU_MODULES OR "Notifications" IN_LIST RYU_MODULES OR "Polkit" IN_LIST RYU_MODULES)
@@ -241,6 +241,21 @@ ryu_module(Polkit
         Qt6::DBus
         Qt6::Network
 )
+
+ryu_module(Ipc
+    SOURCES
+        Ipc/ipc.cpp
+        Ipc/ipc.hpp
+    LIBS
+        Qt6::Network
+)
+
+if("Ipc" IN_LIST RYU_MODULES)
+    add_executable(ryuctl Ipc/ryuctl.cpp)
+    if(RYU_INSTALL)
+        install(TARGETS ryuctl RUNTIME DESTINATION bin)
+    endif()
+endif()
 
 ryu_module(Sqliter
     SOURCES
