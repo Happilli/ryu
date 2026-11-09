@@ -12,8 +12,8 @@ else()
     option(RYU_INSTALL "Generate install rules" OFF)
 endif()
 
-set(RYU_ALL_MODULES "Cleave;Clipsh;Sqliter;Warsa;Shapes;Extraa;Widgets;Discord;Network;Mpris;Power;Notifications;Io;Pam;Audio")
 
+set(RYU_ALL_MODULES "Cleave;Clipsh;Sqliter;Warsa;Shapes;Extraa;Widgets;Discord;Network;Mpris;Power;Notifications;Io;Pam;Audio;Hyprland;Polkit")
 set(RYU_MODULES "${RYU_ALL_MODULES}" CACHE STRING "Modules to build")
 
 foreach(m IN LISTS RYU_MODULES)
@@ -26,10 +26,10 @@ set(RYU_QT_COMPONENTS Core Qml Gui Quick)
 if("Sqliter" IN_LIST RYU_MODULES)
     list(APPEND RYU_QT_COMPONENTS Sql)
 endif()
-if("Discord" IN_LIST RYU_MODULES)
+if("Discord" IN_LIST RYU_MODULES OR "Hyprland" IN_LIST RYU_MODULES OR "Polkit" IN_LIST RYU_MODULES)
     list(APPEND RYU_QT_COMPONENTS Network)
 endif()
-if("Network" IN_LIST RYU_MODULES OR "Mpris" IN_LIST RYU_MODULES OR "Power" IN_LIST RYU_MODULES OR "Notifications" IN_LIST RYU_MODULES)
+if("Network" IN_LIST RYU_MODULES OR "Mpris" IN_LIST RYU_MODULES OR "Power" IN_LIST RYU_MODULES OR "Notifications" IN_LIST RYU_MODULES OR "Polkit" IN_LIST RYU_MODULES)
     list(APPEND RYU_QT_COMPONENTS DBus)
 endif()
 find_package(Qt6 REQUIRED COMPONENTS ${RYU_QT_COMPONENTS})
@@ -225,6 +225,22 @@ ryu_module(Pam
 if(TARGET Pam)
     target_include_directories(Pam PRIVATE ${PAM_INCLUDE_DIR})
 endif()
+ryu_module(Hyprland
+    SOURCES
+        Hyprland/hyprland.cpp
+        Hyprland/hyprland.hpp
+    LIBS
+        Qt6::Network
+)
+
+ryu_module(Polkit
+    SOURCES
+        Polkit/polkit.cpp
+        Polkit/polkit.hpp
+    LIBS
+        Qt6::DBus
+        Qt6::Network
+)
 
 ryu_module(Sqliter
     SOURCES
