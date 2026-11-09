@@ -1,16 +1,12 @@
 #include "./hyprland.hpp"
-
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QLocalSocket>
 #include <QMetaObject>
 #include <QSet>
-
 #include <memory>
-
 namespace {
-
 QString socketPath(const char *file) {
   const QString runtime = qEnvironmentVariable("XDG_RUNTIME_DIR");
   const QString signature = qEnvironmentVariable("HYPRLAND_INSTANCE_SIGNATURE");
@@ -19,13 +15,11 @@ QString socketPath(const char *file) {
   return runtime + QStringLiteral("/hypr/") + signature + QLatin1Char('/') +
          QLatin1String(file);
 }
-
 QString normAddress(QString address) {
   if (address.startsWith(QStringLiteral("0x")))
     address.remove(0, 2);
-  return address;
+  return address.toLower();
 }
-
 template <typename T, typename Key, typename KeyFn, typename MakeFn>
 QVariantList sync(QHash<Key, T *> &map, const QJsonArray &array, KeyFn keyOf,
                   MakeFn make, QList<T *> &gone) {
@@ -53,11 +47,8 @@ QVariantList sync(QHash<Key, T *> &map, const QJsonArray &array, KeyFn keyOf,
   }
   return out;
 }
-
 } // namespace
-
 HyprlandList::HyprlandList(QObject *parent) : QObject(parent) {}
-
 void HyprlandList::setValues(const QVariantList &values) {
   bool same = values.size() == m_values.size();
   for (int i = 0; same && i < values.size(); ++i)
@@ -67,22 +58,17 @@ void HyprlandList::setValues(const QVariantList &values) {
   m_values = values;
   emit valuesChanged();
 }
-
 HyprlandMonitor::HyprlandMonitor(Hyprland *owner, int id)
     : QObject(owner), m_owner(owner), m_id(id) {}
-
 QString HyprlandMonitor::name() const {
   return m_ipc.value(QStringLiteral("name")).toString();
 }
-
 bool HyprlandMonitor::focused() const {
   return m_ipc.value(QStringLiteral("focused")).toBool();
 }
-
 HyprlandWorkspace *HyprlandMonitor::activeWorkspace() const {
   return m_active.data();
 }
-
 void HyprlandMonitor::setIpc(const QVariantMap &ipc) {
   if (m_ipc != ipc) {
     m_ipc = ipc;
@@ -90,7 +76,6 @@ void HyprlandMonitor::setIpc(const QVariantMap &ipc) {
   }
   resolve();
 }
-
 void HyprlandMonitor::resolve() {
   const int id = m_ipc.value(QStringLiteral("activeWorkspace"))
                      .toMap()
@@ -102,14 +87,11 @@ void HyprlandMonitor::resolve() {
   m_active = workspace;
   emit activeWorkspaceChanged();
 }
-
 HyprlandWorkspace::HyprlandWorkspace(Hyprland *owner, int id)
     : QObject(owner), m_owner(owner), m_id(id) {}
-
 QString HyprlandWorkspace::name() const {
   return m_ipc.value(QStringLiteral("name")).toString();
 }
-
 void HyprlandWorkspace::setIpc(const QVariantMap &ipc) {
   if (m_ipc != ipc) {
     m_ipc = ipc;
@@ -117,7 +99,6 @@ void HyprlandWorkspace::setIpc(const QVariantMap &ipc) {
   }
   resolveMonitor();
 }
-
 void HyprlandWorkspace::resolveMonitor() {
   HyprlandMonitor *monitor =
       m_owner->monitorByName(m_ipc.value(QStringLiteral("monitor")).toString());
@@ -126,33 +107,39 @@ void HyprlandWorkspace::resolveMonitor() {
   m_monitor = monitor;
   emit monitorChanged();
 }
-
 HyprlandToplevel::HyprlandToplevel(Hyprland *owner, const QString &address)
     : QObject(owner), m_owner(owner), m_address(address) {}
-
 QString HyprlandToplevel::title() const {
   return m_ipc.value(QStringLiteral("title")).toString();
 }
-
+QString HyprlandToplevel::appId() const {
+  return m_ipc.value(QStringLiteral("class")).toString();
+}
+bool HyprlandToplevel::mapped() const {
+  return m_ipc.value(QStringLiteral("mapped"), true).toBool();
+}
 void HyprlandToplevel::setWayland(QObject *wayland) {
   if (m_wayland == wayland)
     return;
   m_wayland = wayland;
   emit waylandChanged();
 }
-
+void HyprlandToplevel::setActivated(bool activated) {
+  if (m_activated == activated)
+    return;
+  m_activated = activated;
+  emit activatedChanged();
+}
 void HyprlandToplevel::activate() {
   m_owner->dispatch(QStringLiteral("hl.dsp.focus({window = \"address:0x%1\"})")
                         .arg(m_address));
 }
-
 void HyprlandToplevel::setIpc(const QVariantMap &ipc) {
   if (m_ipc == ipc)
     return;
   m_ipc = ipc;
   emit ipcObjectChanged();
 }
-
 Hyprland::Hyprland(QObject *parent)
     : QObject(parent), m_monitors(new HyprlandList(this)),
       m_workspaces(new HyprlandList(this)),
@@ -161,23 +148,19 @@ Hyprland::Hyprland(QObject *parent)
   refreshMonitors();
   refreshWorkspaces();
 }
-
 HyprlandList *Hyprland::toplevels() {
   if (!m_toplevelsWanted)
     refreshToplevels();
   return m_toplevels;
 }
-
 HyprlandMonitor *Hyprland::monitorFor(QObject *screen) const {
   if (!screen)
     return nullptr;
   return monitorByName(screen->property("name").toString());
 }
-
 HyprlandWorkspace *Hyprland::workspaceById(int id) const {
   return m_workspaceMap.value(id, nullptr);
 }
-
 HyprlandMonitor *Hyprland::monitorByName(const QString &name) const {
   if (name.isEmpty())
     return nullptr;
@@ -187,11 +170,9 @@ HyprlandMonitor *Hyprland::monitorByName(const QString &name) const {
   }
   return nullptr;
 }
-
 void Hyprland::dispatch(const QString &requestText) {
   request("dispatch " + requestText.toUtf8(), nullptr);
 }
-
 void Hyprland::reconnect() {
   if (m_events) {
     m_events->disconnect(this);
@@ -199,6 +180,7 @@ void Hyprland::reconnect() {
     m_events = nullptr;
   }
   m_buffer.clear();
+  m_activeKnown = false;
   setConnected(false);
   connectEvents();
   refreshMonitors();
@@ -206,14 +188,12 @@ void Hyprland::reconnect() {
   if (m_toplevelsWanted)
     refreshToplevels();
 }
-
 void Hyprland::setConnected(bool connected) {
   if (m_connected == connected)
     return;
   m_connected = connected;
   emit connectedChanged();
 }
-
 void Hyprland::connectEvents() {
   const QString path = socketPath(".socket2.sock");
   if (path.isEmpty())
@@ -226,7 +206,6 @@ void Hyprland::connectEvents() {
   connect(m_events, &QLocalSocket::readyRead, this, &Hyprland::readEvents);
   m_events->connectToServer(path);
 }
-
 void Hyprland::readEvents() {
   m_buffer.append(m_events->readAll());
   int index;
@@ -234,11 +213,13 @@ void Hyprland::readEvents() {
     const QByteArray line = m_buffer.left(index);
     m_buffer.remove(0, index + 1);
     const int split = line.indexOf(">>");
-    handleEvent(split >= 0 ? line.left(split) : line);
+    if (split >= 0)
+      handleEvent(line.left(split), line.mid(split + 2));
+    else
+      handleEvent(line, QByteArray());
   }
 }
-
-void Hyprland::handleEvent(const QByteArray &name) {
+void Hyprland::handleEvent(const QByteArray &name, const QByteArray &data) {
   static const QSet<QByteArray> layout = {
       "workspace",        "workspacev2",        "focusedmon",
       "focusedmonv2",     "createworkspace",    "createworkspacev2",
@@ -250,19 +231,29 @@ void Hyprland::handleEvent(const QByteArray &name) {
       "openwindow",  "closewindow",   "movewindow",         "movewindowv2",
       "windowtitle", "windowtitlev2", "changefloatingmode", "fullscreen",
       "pin",         "urgent"};
-  static const QSet<QByteArray> focus = {"activewindowv2"};
-
+  if (name == "activewindowv2") {
+    const int comma = data.indexOf(',');
+    const QByteArray address = comma >= 0 ? data.left(comma) : data;
+    m_activeAddress = normAddress(QString::fromUtf8(address.trimmed()));
+    m_activeKnown = true;
+    applyActive();
+    if (m_toplevelsWanted)
+      schedule(m_toplevelsScheduled, &Hyprland::refreshToplevels);
+  }
   if (layout.contains(name)) {
     schedule(m_monitorsScheduled, &Hyprland::refreshMonitors);
     schedule(m_workspacesScheduled, &Hyprland::refreshWorkspaces);
   }
   if (windows.contains(name))
     schedule(m_workspacesScheduled, &Hyprland::refreshWorkspaces);
-  if (m_toplevelsWanted && (windows.contains(name) || focus.contains(name) ||
-                            name == "configreloaded"))
+  if (m_toplevelsWanted && (windows.contains(name) || name == "configreloaded"))
     schedule(m_toplevelsScheduled, &Hyprland::refreshToplevels);
 }
-
+void Hyprland::applyActive() {
+  for (HyprlandToplevel *toplevel : std::as_const(m_toplevelMap))
+    toplevel->setActivated(!m_activeAddress.isEmpty() &&
+                           toplevel->address() == m_activeAddress);
+}
 void Hyprland::schedule(bool &flag, void (Hyprland::*refresh)()) {
   if (flag)
     return;
@@ -275,7 +266,6 @@ void Hyprland::schedule(bool &flag, void (Hyprland::*refresh)()) {
       },
       Qt::QueuedConnection);
 }
-
 void Hyprland::request(const QByteArray &command,
                        std::function<void(const QByteArray &)> done) {
   const QString path = socketPath(".socket.sock");
@@ -284,14 +274,12 @@ void Hyprland::request(const QByteArray &command,
       done(QByteArray());
     return;
   }
-
   struct State {
     QByteArray data;
     bool finished = false;
   };
   auto state = std::make_shared<State>();
   auto *socket = new QLocalSocket(this);
-
   auto finish = [socket, state, done] {
     if (state->finished)
       return;
@@ -300,7 +288,6 @@ void Hyprland::request(const QByteArray &command,
     if (done)
       done(state->data);
   };
-
   connect(socket, &QLocalSocket::connected, socket,
           [socket, command] { socket->write(command); });
   connect(socket, &QLocalSocket::readyRead, socket,
@@ -313,10 +300,8 @@ void Hyprland::request(const QByteArray &command,
             state->data.clear();
             finish();
           });
-
   socket->connectToServer(path);
 }
-
 void Hyprland::refreshMonitors() {
   if (m_monitorsBusy) {
     m_monitorsDirty = true;
@@ -332,7 +317,6 @@ void Hyprland::refreshMonitors() {
     }
   });
 }
-
 void Hyprland::refreshWorkspaces() {
   if (m_workspacesBusy) {
     m_workspacesDirty = true;
@@ -348,7 +332,6 @@ void Hyprland::refreshWorkspaces() {
     }
   });
 }
-
 void Hyprland::refreshToplevels() {
   m_toplevelsWanted = true;
   if (m_toplevelsBusy) {
@@ -365,19 +348,16 @@ void Hyprland::refreshToplevels() {
     }
   });
 }
-
 void Hyprland::applyMonitors(const QByteArray &data) {
   const QJsonDocument doc = QJsonDocument::fromJson(data);
   if (!doc.isArray())
     return;
-
   const QJsonArray array = doc.array();
   QList<HyprlandMonitor *> gone;
   const QVariantList list = sync<HyprlandMonitor, int>(
       m_monitorMap, array,
       [](const QJsonObject &o) { return o.value("id").toInt(); },
       [this](int id) { return new HyprlandMonitor(this, id); }, gone);
-
   HyprlandMonitor *focused = nullptr;
   for (const QJsonValue &value : array) {
     const QJsonObject obj = value.toObject();
@@ -386,7 +366,6 @@ void Hyprland::applyMonitors(const QByteArray &data) {
       break;
     }
   }
-
   m_monitors->setValues(list);
   if (focused != m_focused.data()) {
     m_focused = focused;
@@ -395,33 +374,29 @@ void Hyprland::applyMonitors(const QByteArray &data) {
   for (HyprlandWorkspace *workspace : std::as_const(m_workspaceMap))
     workspace->resolveMonitor();
 }
-
 void Hyprland::applyWorkspaces(const QByteArray &data) {
   const QJsonDocument doc = QJsonDocument::fromJson(data);
   if (!doc.isArray())
     return;
-
   QList<HyprlandWorkspace *> gone;
   const QVariantList list = sync<HyprlandWorkspace, int>(
       m_workspaceMap, doc.array(),
       [](const QJsonObject &o) { return o.value("id").toInt(); },
       [this](int id) { return new HyprlandWorkspace(this, id); }, gone);
-
   m_workspaces->setValues(list);
   for (HyprlandMonitor *monitor : std::as_const(m_monitorMap))
     monitor->resolve();
   for (HyprlandWorkspace *workspace : std::as_const(gone))
     workspace->deleteLater();
 }
-
 void Hyprland::applyToplevels(const QByteArray &data) {
   const QJsonDocument doc = QJsonDocument::fromJson(data);
   if (!doc.isArray())
     return;
-
+  const QJsonArray array = doc.array();
   QList<HyprlandToplevel *> gone;
   const QVariantList list = sync<HyprlandToplevel, QString>(
-      m_toplevelMap, doc.array(),
+      m_toplevelMap, array,
       [](const QJsonObject &o) {
         return normAddress(o.value("address").toString());
       },
@@ -429,7 +404,18 @@ void Hyprland::applyToplevels(const QByteArray &data) {
         return new HyprlandToplevel(this, address);
       },
       gone);
-
+  if (!m_activeKnown) {
+    m_activeAddress.clear();
+    for (const QJsonValue &value : array) {
+      const QJsonObject obj = value.toObject();
+      if (obj.value("mapped").toBool(true) &&
+          obj.value("focusHistoryID").toInt(-1) == 0) {
+        m_activeAddress = normAddress(obj.value("address").toString());
+        break;
+      }
+    }
+  }
+  applyActive();
   m_toplevels->setValues(list);
   for (HyprlandToplevel *toplevel : std::as_const(gone))
     toplevel->deleteLater();
