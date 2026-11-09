@@ -12,7 +12,7 @@ else()
     option(RYU_INSTALL "Generate install rules" OFF)
 endif()
 
-set(RYU_ALL_MODULES "Cleave;Clipsh;Sqliter;Warsa;Shapes;Extraa;Widgets;Discord;Network;Mpris;Power;Notifications")
+set(RYU_ALL_MODULES "Cleave;Clipsh;Sqliter;Warsa;Shapes;Extraa;Widgets;Discord;Network;Mpris;Power;Notifications;Io")
 set(RYU_MODULES "${RYU_ALL_MODULES}" CACHE STRING "Modules to build")
 
 foreach(m IN LISTS RYU_MODULES)
@@ -186,7 +186,13 @@ ryu_module(Network
     LIBS
         Qt6::DBus
 )
-
+ryu_module(Io
+    SOURCES
+        Io/process.cpp
+        Io/process.hpp
+        Io/exec.cpp
+        Io/exec.hpp
+)
 ryu_module(Sqliter
     SOURCES
         Sqliter/eventsservice.cpp
