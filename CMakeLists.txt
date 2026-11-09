@@ -12,7 +12,7 @@ else()
     option(RYU_INSTALL "Generate install rules" OFF)
 endif()
 
-set(RYU_ALL_MODULES "Cleave;Clipsh;Sqliter;Warsa;Shapes;Extraa;Widgets;Discord;Network")
+set(RYU_ALL_MODULES "Cleave;Clipsh;Sqliter;Warsa;Shapes;Extraa;Widgets;Discord;Network;Mpris;Power;Notifications")
 set(RYU_MODULES "${RYU_ALL_MODULES}" CACHE STRING "Modules to build")
 
 foreach(m IN LISTS RYU_MODULES)
@@ -28,7 +28,7 @@ endif()
 if("Discord" IN_LIST RYU_MODULES)
     list(APPEND RYU_QT_COMPONENTS Network)
 endif()
-if("Network" IN_LIST RYU_MODULES)
+if("Network" IN_LIST RYU_MODULES OR "Mpris" IN_LIST RYU_MODULES OR "Power" IN_LIST RYU_MODULES OR "Notifications" IN_LIST RYU_MODULES)
     list(APPEND RYU_QT_COMPONENTS DBus)
 endif()
 find_package(Qt6 REQUIRED COMPONENTS ${RYU_QT_COMPONENTS})
@@ -154,6 +154,31 @@ ryu_module(Discord
         Qt6::Network
 )
 
+ryu_module(Mpris
+    SOURCES
+        Mpris/mpris.cpp
+        Mpris/mpris.hpp
+    LIBS
+        Qt6::DBus
+)
+
+ryu_module(Power
+    SOURCES
+        Power/upower.cpp
+        Power/upower.hpp
+        Power/powerprofiles.cpp
+        Power/powerprofiles.hpp
+    LIBS
+        Qt6::DBus
+)
+ryu_module(Notifications
+    SOURCES
+        Notifications/notifications.cpp
+        Notifications/notifications.hpp
+    LIBS
+        Qt6::DBus
+        Qt6::Quick
+)
 ryu_module(Network
     SOURCES
         Network/iwd.cpp
