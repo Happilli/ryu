@@ -13,7 +13,7 @@ else()
 endif()
 
 
-set(RYU_ALL_MODULES "Cleave;Clipsh;Sqliter;Warsa;Shapes;Extraa;Widgets;Discord;Network;Mpris;Power;Notifications;Io;Pam;Audio;Hyprland;Polkit;Ipc")
+set(RYU_ALL_MODULES "Cleave;Clipsh;Sqliter;Warsa;Shapes;Extraa;Widgets;Discord;Network;Mpris;Power;Notifications;Io;Pam;Audio;Hyprland;Polkit;Ipc;Desktop")
 set(RYU_MODULES "${RYU_ALL_MODULES}" CACHE STRING "Modules to build")
 
 foreach(m IN LISTS RYU_MODULES)
@@ -213,6 +213,14 @@ ryu_module(Io
         Io/exec.hpp
         Io/fileview.cpp
         Io/fileview.hpp
+)
+
+ryu_module(Desktop
+    SOURCES
+        Desktop/desktop.cpp
+        Desktop/desktop.hpp
+    LIBS
+        Qt6::Quick
 )
 ryu_module(Pam
     SOURCES
