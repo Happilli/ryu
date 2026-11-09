@@ -13,7 +13,7 @@ else()
 endif()
 
 
-set(RYU_ALL_MODULES "Cleave;Clipsh;Sqliter;Warsa;Shapes;Extraa;Widgets;Discord;Network;Mpris;Power;Notifications;Io;Pam;Audio;Hyprland;Polkit;Ipc;Desktop")
+set(RYU_ALL_MODULES "Cleave;Clipsh;Sqliter;Warsa;Shapes;Extraa;Widgets;Discord;Network;Mpris;Power;Notifications;Io;Pam;Audio;Hyprland;Polkit;Ipc;Desktop;Ui")
 set(RYU_MODULES "${RYU_ALL_MODULES}" CACHE STRING "Modules to build")
 
 foreach(m IN LISTS RYU_MODULES)
@@ -75,7 +75,7 @@ function(ryu_module name)
         return()
     endif()
 
-    cmake_parse_arguments(ARG "" "" "SOURCES;LIBS;DEPS" ${ARGN})
+    cmake_parse_arguments(ARG "" "" "SOURCES;QML_FILES;LIBS;DEPS" ${ARGN})
 
     set(dep_args "")
     if(ARG_DEPS)
@@ -92,6 +92,7 @@ function(ryu_module name)
         URI Ryu.${name}
         VERSION 1.0
         SOURCES ${ARG_SOURCES}
+        QML_FILES ${ARG_QML_FILES}
         ${dep_args}
         NO_PLUGIN_OPTIONAL
         OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/Ryu/${name}"
@@ -222,6 +223,21 @@ ryu_module(Desktop
     LIBS
         Qt6::Quick
 )
+
+ryu_module(Ui
+    SOURCES
+        Ui/scriptmodel.cpp
+        Ui/scriptmodel.hpp
+    QML_FILES
+        Ui/ClippingRectangle.qml
+        Ui/IconImage.qml
+    LIBS
+        Qt6::Quick
+    DEPS
+        QtQuick
+        QtQuick.Effects
+)
+
 ryu_module(Pam
     SOURCES
         Pam/pam.cpp
