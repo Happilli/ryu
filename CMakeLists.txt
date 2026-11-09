@@ -12,7 +12,8 @@ else()
     option(RYU_INSTALL "Generate install rules" OFF)
 endif()
 
-set(RYU_ALL_MODULES "Cleave;Clipsh;Sqliter;Warsa;Shapes;Extraa;Widgets;Discord;Network;Mpris;Power;Notifications;Io")
+set(RYU_ALL_MODULES "Cleave;Clipsh;Sqliter;Warsa;Shapes;Extraa;Widgets;Discord;Network;Mpris;Power;Notifications;Io;Pam;Audio")
+
 set(RYU_MODULES "${RYU_ALL_MODULES}" CACHE STRING "Modules to build")
 
 foreach(m IN LISTS RYU_MODULES)
@@ -33,7 +34,12 @@ if("Network" IN_LIST RYU_MODULES OR "Mpris" IN_LIST RYU_MODULES OR "Power" IN_LI
 endif()
 find_package(Qt6 REQUIRED COMPONENTS ${RYU_QT_COMPONENTS})
 
-if("Cleave" IN_LIST RYU_MODULES)
+if("Pam" IN_LIST RYU_MODULES)
+    find_library(PAM_LIBRARY pam REQUIRED)
+    find_path(PAM_INCLUDE_DIR security/pam_appl.h REQUIRED)
+endif()
+
+if("Cleave" IN_LIST RYU_MODULES OR "Audio" IN_LIST RYU_MODULES)
     find_package(PkgConfig REQUIRED)
     pkg_check_modules(PIPEWIRE REQUIRED libpipewire-0.3)
 endif()
@@ -140,6 +146,19 @@ if(TARGET Cleave)
     target_compile_options(Cleave PRIVATE ${PIPEWIRE_CFLAGS_OTHER})
 endif()
 
+ryu_module(Audio
+    SOURCES
+        Audio/audio.cpp
+        Audio/audio.hpp
+    LIBS
+        ${PIPEWIRE_LIBRARIES}
+)
+
+if(TARGET Audio)
+    target_include_directories(Audio PRIVATE ${PIPEWIRE_INCLUDE_DIRS})
+    target_compile_options(Audio PRIVATE ${PIPEWIRE_CFLAGS_OTHER})
+endif()
+
 ryu_module(Clipsh
     SOURCES
         Clipsh/clipsh.cpp
@@ -192,7 +211,21 @@ ryu_module(Io
         Io/process.hpp
         Io/exec.cpp
         Io/exec.hpp
+        Io/fileview.cpp
+        Io/fileview.hpp
 )
+ryu_module(Pam
+    SOURCES
+        Pam/pam.cpp
+        Pam/pam.hpp
+    LIBS
+        ${PAM_LIBRARY}
+)
+
+if(TARGET Pam)
+    target_include_directories(Pam PRIVATE ${PAM_INCLUDE_DIR})
+endif()
+
 ryu_module(Sqliter
     SOURCES
         Sqliter/eventsservice.cpp

@@ -136,19 +136,21 @@ void Process::setStdinEnabled(bool on) {
   emit stdinEnabledChanged();
 }
 
-void Process::setStdoutParser(SplitParser *parser) {
-  if (m_stdout == parser) {
+void Process::setStdoutObject(QObject *parser) {
+  auto *typed = qobject_cast<SplitParser *>(parser);
+  if (m_stdout == typed) {
     return;
   }
-  m_stdout = parser;
+  m_stdout = typed;
   emit stdoutChanged();
 }
 
-void Process::setStderrParser(SplitParser *parser) {
-  if (m_stderr == parser) {
+void Process::setStderrObject(QObject *parser) {
+  auto *typed = qobject_cast<SplitParser *>(parser);
+  if (m_stderr == typed) {
     return;
   }
-  m_stderr = parser;
+  m_stderr = typed;
   emit stderrChanged();
 }
 

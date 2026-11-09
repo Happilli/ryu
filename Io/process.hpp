@@ -52,9 +52,9 @@ class Process : public QObject, public QQmlParserStatus {
                  setClearEnvironment NOTIFY clearEnvironmentChanged)
   Q_PROPERTY(bool stdinEnabled READ stdinEnabled WRITE setStdinEnabled NOTIFY
                  stdinEnabledChanged)
-  Q_PROPERTY(SplitParser *stdout READ stdoutParser WRITE setStdoutParser NOTIFY
+  Q_PROPERTY(QObject *stdout READ stdoutObject WRITE setStdoutObject NOTIFY
                  stdoutChanged)
-  Q_PROPERTY(SplitParser *stderr READ stderrParser WRITE setStderrParser NOTIFY
+  Q_PROPERTY(QObject *stderr READ stderrObject WRITE setStderrObject NOTIFY
                  stderrChanged)
 
 public:
@@ -76,10 +76,10 @@ public:
   void setClearEnvironment(bool on);
   bool stdinEnabled() const { return m_stdinEnabled; }
   void setStdinEnabled(bool on);
-  SplitParser *stdoutParser() const { return m_stdout; }
-  void setStdoutParser(SplitParser *parser);
-  SplitParser *stderrParser() const { return m_stderr; }
-  void setStderrParser(SplitParser *parser);
+  QObject *stdoutObject() const { return m_stdout; }
+  void setStdoutObject(QObject *parser);
+  QObject *stderrObject() const { return m_stderr; }
+  void setStderrObject(QObject *parser);
 
   Q_INVOKABLE void signal(int sig);
   Q_INVOKABLE void write(const QString &data);
