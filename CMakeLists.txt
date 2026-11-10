@@ -297,6 +297,10 @@ ryu_module(Ui
     SOURCES
         Ui/scriptmodel.cpp
         Ui/scriptmodel.hpp
+        Ui/floatingwindow.cpp
+        Ui/floatingwindow.hpp
+        Ui/lazyloader.cpp
+        Ui/lazyloader.hpp
     QML_FILES
         Ui/ClippingRectangle.qml
         Ui/IconImage.qml
