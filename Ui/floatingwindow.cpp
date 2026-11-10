@@ -1,5 +1,4 @@
 #include "./floatingwindow.hpp"
-
 #include <QQuickItem>
 #include <cmath>
 
@@ -70,14 +69,4 @@ void FloatingWindow::applySize() {
   }
 }
 
-void FloatingWindow::setVisibleFlag(bool visible) {
-  m_visibleSet = true;
-  setVisible(visible);
-}
-
-void FloatingWindow::componentComplete() {
-  applySize();
-  if (!m_visibleSet) {
-    setVisible(true);
-  }
-}
+void FloatingWindow::componentComplete() { applySize(); }

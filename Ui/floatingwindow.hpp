@@ -13,8 +13,6 @@ class FloatingWindow : public QQuickWindow, public QQmlParserStatus {
   Q_INTERFACES(QQmlParserStatus)
   Q_CLASSINFO("DefaultProperty", "contents")
   Q_PROPERTY(QQmlListProperty<QObject> contents READ contents)
-  Q_PROPERTY(
-      bool visible READ isVisible WRITE setVisibleFlag NOTIFY visibleChanged)
   Q_PROPERTY(qreal implicitWidth READ implicitWidth WRITE setImplicitWidth
                  NOTIFY implicitWidthChanged)
   Q_PROPERTY(qreal implicitHeight READ implicitHeight WRITE setImplicitHeight
@@ -33,7 +31,6 @@ public:
   qreal implicitHeight() const { return m_implicitHeight; }
   void setImplicitWidth(qreal value);
   void setImplicitHeight(qreal value);
-  void setVisibleFlag(bool visible);
 
   void classBegin() override {}
   void componentComplete() override;
@@ -55,5 +52,4 @@ private:
   QList<QObject *> m_contents;
   qreal m_implicitWidth = 0;
   qreal m_implicitHeight = 0;
-  bool m_visibleSet = false;
 };
