@@ -187,9 +187,15 @@ function(ryu_module name)
             PATTERN "qmldir"
             PATTERN "*.qrc"
         )
+
+       foreach(qml_file IN LISTS ARG_QML_FILES)
+            get_filename_component(qml_rel_dir "${qml_file}" DIRECTORY)
+            install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/${qml_file}"
+                DESTINATION "${install_dir}/${qml_rel_dir}"
+            )
+        endforeach()
     endif()
 endfunction()
-
 ryu_module(Cleave
     SOURCES
         Cleave/cleave.cpp
