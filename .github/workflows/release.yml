@@ -12,7 +12,7 @@ jobs:
     container: archlinux:latest
     steps:
       - name: Install dependencies
-        run: pacman -Syu --noconfirm base-devel git cmake ninja qt6-base qt6-declarative qt6-tools qt6-wayland wayland wayland-protocols wlr-protocols libxkbcommon libdrm mesa pam pipewire
+        run: pacman -Syu --noconfirm base-devel git cmake ninja qt6-base qt6-declarative qt6-tools qt6-wayland qt6-shadertools wayland wayland-protocols wlr-protocols libxkbcommon libdrm mesa pam pipewire
       - name: Show protocol XMLs
         run: |
           pacman -Q wlr-protocols wayland-protocols
