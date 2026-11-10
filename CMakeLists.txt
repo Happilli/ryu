@@ -12,7 +12,7 @@ else()
     option(RYU_INSTALL "Generate install rules" OFF)
 endif()
 
-set(RYU_ALL_MODULES "Cleave;Clipsh;Sqliter;Warsa;Shapes;Extraa;Widgets;Discord;Network;Mpris;Power;Notifications;Io;Pam;Audio;Sway;Polkit;Ipc;Desktop;Ui;Wayland;Display")
+set(RYU_ALL_MODULES "Cleave;Clipsh;Sqliter;Warsa;Shapes;Extraa;Widgets;Discord;Network;Mpris;Power;Notifications;Io;Pam;Audio;Sway;Polkit;Ipc;Desktop;Ui;Wayland;Display;Shell")
 set(RYU_MODULES "${RYU_ALL_MODULES}" CACHE STRING "Modules to build")
 
 foreach(m IN LISTS RYU_MODULES)
@@ -291,6 +291,17 @@ ryu_module(Display
         Display/display.hpp
     LIBS
         Qt6::DBus
+)
+ryu_module(Shell
+    SOURCES
+        Shell/scope.cpp
+        Shell/scope.hpp
+        Shell/screens.cpp
+        Shell/screens.hpp
+        Shell/variants.cpp
+        Shell/variants.hpp
+        Shell/systemclock.cpp
+        Shell/systemclock.hpp
 )
 
 ryu_module(Ui
