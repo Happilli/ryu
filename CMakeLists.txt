@@ -12,7 +12,7 @@ else()
     option(RYU_INSTALL "Generate install rules" OFF)
 endif()
 
-set(RYU_ALL_MODULES "Cleave;Clipsh;Sqliter;Warsa;Shapes;Extraa;Widgets;Discord;Network;Mpris;Power;Notifications;Io;Pam;Audio;Sway;Polkit;Ipc;Desktop;Ui;Wayland")
+set(RYU_ALL_MODULES "Cleave;Clipsh;Sqliter;Warsa;Shapes;Extraa;Widgets;Discord;Network;Mpris;Power;Notifications;Io;Pam;Audio;Sway;Polkit;Ipc;Desktop;Ui;Wayland;Display")
 set(RYU_MODULES "${RYU_ALL_MODULES}" CACHE STRING "Modules to build")
 
 foreach(m IN LISTS RYU_MODULES)
@@ -21,21 +21,21 @@ foreach(m IN LISTS RYU_MODULES)
     endif()
 endforeach()
 
-set(RYU_QT_COMPONENTS Core Qml Gui Quick)
+set(RYU_QT_COMPONENTS Core Qml Gui Quick ShaderTools)
 if("Sqliter" IN_LIST RYU_MODULES)
     list(APPEND RYU_QT_COMPONENTS Sql)
 endif()
 if("Discord" IN_LIST RYU_MODULES OR "Sway" IN_LIST RYU_MODULES OR "Polkit" IN_LIST RYU_MODULES OR "Ipc" IN_LIST RYU_MODULES)
     list(APPEND RYU_QT_COMPONENTS Network)
 endif()
-if("Network" IN_LIST RYU_MODULES OR "Mpris" IN_LIST RYU_MODULES OR "Power" IN_LIST RYU_MODULES OR "Notifications" IN_LIST RYU_MODULES OR "Polkit" IN_LIST RYU_MODULES)
+if("Network" IN_LIST RYU_MODULES OR "Mpris" IN_LIST RYU_MODULES OR "Power" IN_LIST RYU_MODULES OR "Notifications" IN_LIST RYU_MODULES OR "Polkit" IN_LIST RYU_MODULES OR "Display" IN_LIST RYU_MODULES)
     list(APPEND RYU_QT_COMPONENTS DBus)
 endif()
 
 if("Wayland" IN_LIST RYU_MODULES)
     list(APPEND RYU_QT_COMPONENTS WaylandClient WaylandClientPrivate GuiPrivate)
 endif()
-
+set(QT_NO_PRIVATE_MODULE_WARNING ON)
 find_package(Qt6 REQUIRED COMPONENTS ${RYU_QT_COMPONENTS})
 
 if("Pam" IN_LIST RYU_MODULES)
@@ -281,6 +281,14 @@ ryu_module(Desktop
         Qt6::Quick
 )
 
+ryu_module(Display
+    SOURCES
+        Display/display.cpp
+        Display/display.hpp
+    LIBS
+        Qt6::DBus
+)
+
 ryu_module(Ui
     SOURCES
         Ui/scriptmodel.cpp
@@ -292,8 +300,15 @@ ryu_module(Ui
         Qt6::Quick
     DEPS
         QtQuick
-        QtQuick.Effects
 )
+
+if(TARGET Ui)
+    qt_add_shaders(Ui "ui_shaders"
+        PREFIX "/Ryu/Ui"
+        FILES Ui/shaders/rounded.frag
+        OUTPUTS shaders/rounded.frag.qsb
+    )
+endif()
 
 ryu_module(Wayland
     SOURCES
