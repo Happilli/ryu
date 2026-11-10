@@ -41,22 +41,29 @@ public:
     set_layer(layer);
     commit();
   }
+
   void setAnchors(uint32_t anchors) {
     set_anchor(anchors);
+    m_sent = wantedSize();
+    set_size(uint32_t(m_sent.width()), uint32_t(m_sent.height()));
     commit();
   }
+
   void setMargins(int top, int right, int bottom, int left) {
     set_margin(top, right, bottom, left);
     commit();
   }
+
   void setExclusive(int zone) {
     set_exclusive_zone(zone);
     commit();
   }
+
   void setKeyboard(uint32_t mode) {
     set_keyboard_interactivity(mode);
     commit();
   }
+
   void syncSize() {
     const QSize wanted = wantedSize();
     if (wanted == m_sent) {
@@ -66,6 +73,7 @@ public:
     set_size(uint32_t(wanted.width()), uint32_t(wanted.height()));
     commit();
   }
+
   void setInput(const QRegion &region) {
     ::wl_region *wlRegion = window()->display()->createRegion(region);
     wl_surface_set_input_region(window()->wlSurface(), wlRegion);
@@ -81,6 +89,7 @@ protected:
     m_configured = true;
     window()->applyConfigureWhenPossible();
   }
+
   void zwlr_layer_surface_v1_closed() override {
     if (m_owner) {
       QMetaObject::invokeMethod(
@@ -96,6 +105,7 @@ private:
     const int h = (a->top() && a->bottom()) ? 0 : qMax(1, m_owner->height());
     return QSize(w, h);
   }
+
   void commit() { wl_surface_commit(window()->wlSurface()); }
 
   QPointer<WlrLayershell> m_owner;
@@ -216,7 +226,6 @@ QRegion Region::build() const {
   }
   return out;
 }
-
 WlrLayershell::WlrLayershell(QWindow *parent) : QQuickWindow(parent) {
   QSurfaceFormat surface = format();
   surface.setAlphaBufferSize(8);
@@ -229,7 +238,6 @@ WlrLayershell::WlrLayershell(QWindow *parent) : QQuickWindow(parent) {
   connect(m_anchors, &WlrAnchors::changed, this, [this]() {
     if (m_surface) {
       m_surface->setAnchors(m_anchors->mask());
-      m_surface->syncSize();
     }
   });
   connect(m_margins, &WlrMargins::changed, this, [this]() {
