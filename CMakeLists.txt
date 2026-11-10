@@ -81,6 +81,10 @@ if("Wayland" IN_LIST RYU_MODULES)
         PATHS /usr/share /usr/local/share
         PATH_SUFFIXES wayland-protocols/staging/ext-session-lock
         NO_DEFAULT_PATH REQUIRED)
+    find_file(RYU_XML_WLR_GAMMA wlr-gamma-control-unstable-v1.xml
+        PATHS /usr/share /usr/local/share
+        PATH_SUFFIXES wlr-protocols/unstable
+        NO_DEFAULT_PATH REQUIRED)
 
     file(READ "${RYU_XML_WLR_LAYER_SHELL}" RYU_LAYER_SHELL_XML)
     string(REPLACE "name=\"namespace\"" "name=\"namespace_\"" RYU_LAYER_SHELL_XML "${RYU_LAYER_SHELL_XML}")
@@ -322,6 +326,8 @@ ryu_module(Wayland
         Wayland/layershell.hpp
         Wayland/sessionlock.cpp
         Wayland/sessionlock.hpp
+        Wayland/nightlight.cpp
+        Wayland/nightlight.hpp
     LIBS
         Qt6::Quick
         Qt6::WaylandClient
@@ -348,6 +354,7 @@ if(TARGET Wayland)
             ${RYU_XML_WLR_LAYER_SHELL_PATCHED}
             ${RYU_XML_XDG_SHELL}
             ${RYU_XML_EXT_SESSION_LOCK}
+            ${RYU_XML_WLR_GAMMA}
     )
 
     target_include_directories(Wayland PRIVATE
