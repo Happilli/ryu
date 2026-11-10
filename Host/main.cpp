@@ -3,8 +3,10 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QGuiApplication>
+#include <QLibraryInfo>
 #include <QQmlApplicationEngine>
 #include <QSocketNotifier>
+#include <QStringList>
 #include <QUrl>
 #include <csignal>
 #include <cstdio>
@@ -12,6 +14,8 @@
 #include <unistd.h>
 
 namespace {
+
+constexpr QLatin1String kPrefix("px");
 
 int g_signalPipe[2] = {-1, -1};
 
@@ -96,6 +100,35 @@ bool mirrorTree(const QString &source, const QString &target,
   return true;
 }
 
+bool writeQmllsIni(const QString &shellDir, const QString &imports) {
+  QStringList paths;
+  paths << imports << QCoreApplication::applicationDirPath()
+        << QLibraryInfo::path(QLibraryInfo::QmlImportsPath);
+  paths.removeDuplicates();
+
+  QByteArray content;
+  content += "[General]\n";
+  content += "no-cmake-calls=true\n";
+  content += "buildDir=\"" + imports.toUtf8() + "\"\n";
+  content += "importPaths=\"" + paths.join(QLatin1Char(':')).toUtf8() + "\"\n";
+
+  const QString path = shellDir + QStringLiteral("/.qmlls.ini");
+  QFile existing(path);
+  if (existing.open(QIODevice::ReadOnly)) {
+    const QByteArray current = existing.readAll();
+    existing.close();
+    if (current == content) {
+      return true;
+    }
+  }
+
+  QFile out(path);
+  if (!out.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+    return false;
+  }
+  return out.write(content) == content.size();
+}
+
 } // namespace
 
 int main(int argc, char **argv) {
@@ -107,36 +140,40 @@ int main(int argc, char **argv) {
   }
 
   QGuiApplication app(argc, argv);
-  app.setApplicationName(QStringLiteral("ryu-shell"));
+  app.setApplicationName(QStringLiteral("phoenix"));
   app.setQuitOnLastWindowClosed(false);
 
   const QStringList args = QCoreApplication::arguments();
   if (args.size() < 2) {
-    std::fprintf(stderr, "usage: ryu-shell <shell directory>\n");
+    std::fprintf(stderr, "usage: phoenix <shell directory>\n");
     return 2;
   }
 
   const QDir shellDir(QDir(args.at(1)).absolutePath());
   const QString shellFile = shellDir.filePath(QStringLiteral("shell.qml"));
   if (!QFile::exists(shellFile)) {
-    std::fprintf(stderr, "ryu-shell: %s not found\n", qPrintable(shellFile));
+    std::fprintf(stderr, "phoenix: %s not found\n", qPrintable(shellFile));
     return 2;
   }
 
   const QString runtime =
       qEnvironmentVariable("XDG_RUNTIME_DIR", QStringLiteral("/tmp"));
-  const QString imports = runtime + QStringLiteral("/ryu-shell-imports");
+  const QString imports = runtime + QStringLiteral("/phoenix-imports");
   QDir().mkpath(imports);
-  const QString mirror = imports + QStringLiteral("/qs");
+  const QString mirror = imports + QLatin1Char('/') + QString(kPrefix);
   QFile::remove(mirror);
   QDir(mirror).removeRecursively();
-  if (!mirrorTree(shellDir.absolutePath(), mirror, QStringLiteral("qs"))) {
-    std::fprintf(stderr, "ryu-shell: cannot mirror %s\n", qPrintable(mirror));
+  if (!mirrorTree(shellDir.absolutePath(), mirror, QString(kPrefix))) {
+    std::fprintf(stderr, "phoenix: cannot mirror %s\n", qPrintable(mirror));
     return 1;
   }
 
+  if (!writeQmllsIni(shellDir.absolutePath(), imports)) {
+    std::fprintf(stderr, "phoenix: could not write .qmlls.ini\n");
+  }
+
   if (!installSignals()) {
-    std::fprintf(stderr, "ryu-shell: signal setup failed\n");
+    std::fprintf(stderr, "phoenix: signal setup failed\n");
     return 1;
   }
 

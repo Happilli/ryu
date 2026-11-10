@@ -425,10 +425,10 @@ if("Ipc" IN_LIST RYU_MODULES)
 endif()
 
 if(PROJECT_IS_TOP_LEVEL)
-    add_executable(ryu-shell Host/main.cpp)
-    target_link_libraries(ryu-shell PRIVATE Qt6::Core Qt6::Gui Qt6::Qml Qt6::Quick)
+    add_executable(phoenix Host/main.cpp)
+    target_link_libraries(phoenix PRIVATE Qt6::Core Qt6::Gui Qt6::Qml Qt6::Quick)
     if(RYU_INSTALL)
-        install(TARGETS ryu-shell RUNTIME DESTINATION bin)
+        install(TARGETS phoenix RUNTIME DESTINATION bin)
     endif()
 endif()
 
