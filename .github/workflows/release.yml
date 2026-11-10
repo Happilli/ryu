@@ -11,7 +11,12 @@ jobs:
     runs-on: ubuntu-latest
     container: archlinux:latest
     steps:
-      - run: pacman -Syu --noconfirm base-devel git cmake ninja qt6-base qt6-declarative qt6-tools pipewire
+      - name: Install dependencies
+        run: pacman -Syu --noconfirm base-devel git cmake ninja qt6-base qt6-declarative qt6-tools qt6-wayland wayland wayland-protocols wlr-protocols libxkbcommon libdrm mesa pam pipewire
+      - name: Show protocol XMLs
+        run: |
+          pacman -Q wlr-protocols wayland-protocols
+          find /usr/share -name "*screencopy*" -o -name "*session-lock*" -o -name "*layer-shell*"
       - uses: actions/checkout@v5
       - name: Build
         run: |
