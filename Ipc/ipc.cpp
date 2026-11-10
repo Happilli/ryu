@@ -203,8 +203,7 @@ IpcServer::Reply IpcServer::call(IpcHandler *handler, const QString &function,
                          .arg(i + 1)
                          .arg(typeLabel(type))};
     values[i] = converted;
-    generic[i] = QGenericArgument(method.parameterTypeName(i).constData(),
-                                  values[i].constData());
+    generic[i] = QGenericArgument(type.name(), values[i].constData());
   }
 
   const QMetaType returnType = method.returnMetaType();
@@ -242,7 +241,6 @@ IpcServer::Reply IpcServer::call(IpcHandler *handler, const QString &function,
             result.toBool() ? QStringLiteral("true") : QStringLiteral("false")};
   return {true, result.toString()};
 }
-
 QString IpcServer::describe() const {
   QStringList targets = m_handlers.keys();
   targets.sort();

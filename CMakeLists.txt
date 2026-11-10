@@ -12,8 +12,7 @@ else()
     option(RYU_INSTALL "Generate install rules" OFF)
 endif()
 
-
-set(RYU_ALL_MODULES "Cleave;Clipsh;Sqliter;Warsa;Shapes;Extraa;Widgets;Discord;Network;Mpris;Power;Notifications;Io;Pam;Audio;Hyprland;Polkit;Ipc;Desktop;Ui")
+set(RYU_ALL_MODULES "Cleave;Clipsh;Sqliter;Warsa;Shapes;Extraa;Widgets;Discord;Network;Mpris;Power;Notifications;Io;Pam;Audio;Sway;Polkit;Ipc;Desktop;Ui;Wayland")
 set(RYU_MODULES "${RYU_ALL_MODULES}" CACHE STRING "Modules to build")
 
 foreach(m IN LISTS RYU_MODULES)
@@ -26,17 +25,69 @@ set(RYU_QT_COMPONENTS Core Qml Gui Quick)
 if("Sqliter" IN_LIST RYU_MODULES)
     list(APPEND RYU_QT_COMPONENTS Sql)
 endif()
-if("Discord" IN_LIST RYU_MODULES OR "Hyprland" IN_LIST RYU_MODULES OR "Polkit" IN_LIST RYU_MODULES OR "Ipc" IN_LIST RYU_MODULES)
+if("Discord" IN_LIST RYU_MODULES OR "Sway" IN_LIST RYU_MODULES OR "Polkit" IN_LIST RYU_MODULES OR "Ipc" IN_LIST RYU_MODULES)
     list(APPEND RYU_QT_COMPONENTS Network)
 endif()
 if("Network" IN_LIST RYU_MODULES OR "Mpris" IN_LIST RYU_MODULES OR "Power" IN_LIST RYU_MODULES OR "Notifications" IN_LIST RYU_MODULES OR "Polkit" IN_LIST RYU_MODULES)
     list(APPEND RYU_QT_COMPONENTS DBus)
 endif()
+
+if("Wayland" IN_LIST RYU_MODULES)
+    list(APPEND RYU_QT_COMPONENTS WaylandClient WaylandClientPrivate GuiPrivate)
+endif()
+
 find_package(Qt6 REQUIRED COMPONENTS ${RYU_QT_COMPONENTS})
 
 if("Pam" IN_LIST RYU_MODULES)
     find_library(PAM_LIBRARY pam REQUIRED)
     find_path(PAM_INCLUDE_DIR security/pam_appl.h REQUIRED)
+endif()
+
+if("Wayland" IN_LIST RYU_MODULES)
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(WAYLAND_CLIENT REQUIRED wayland-client)
+    pkg_check_modules(GBM REQUIRED gbm)
+    pkg_check_modules(EGL REQUIRED egl)
+    pkg_check_modules(LIBDRM REQUIRED libdrm)
+    find_file(RYU_XML_WLR_SCREENCOPY wlr-screencopy-unstable-v1.xml
+        PATHS /usr/share /usr/local/share
+        PATH_SUFFIXES wlr-protocols/unstable
+        NO_DEFAULT_PATH REQUIRED)
+    find_file(RYU_XML_LINUX_DMABUF linux-dmabuf-v1.xml
+        PATHS /usr/share /usr/local/share
+        PATH_SUFFIXES wayland-protocols/stable/linux-dmabuf
+        NO_DEFAULT_PATH REQUIRED)
+    find_file(RYU_XML_EXT_TOPLEVEL_LIST ext-foreign-toplevel-list-v1.xml
+        PATHS /usr/share /usr/local/share
+        PATH_SUFFIXES wayland-protocols/staging/ext-foreign-toplevel-list
+        NO_DEFAULT_PATH REQUIRED)
+    find_file(RYU_XML_EXT_CAPTURE_SOURCE ext-image-capture-source-v1.xml
+        PATHS /usr/share /usr/local/share
+        PATH_SUFFIXES wayland-protocols/staging/ext-image-capture-source
+        NO_DEFAULT_PATH REQUIRED)
+    find_file(RYU_XML_EXT_COPY_CAPTURE ext-image-copy-capture-v1.xml
+        PATHS /usr/share /usr/local/share
+        PATH_SUFFIXES wayland-protocols/staging/ext-image-copy-capture
+        NO_DEFAULT_PATH REQUIRED)
+    find_file(RYU_XML_WLR_LAYER_SHELL wlr-layer-shell-unstable-v1.xml
+        PATHS /usr/share /usr/local/share
+        PATH_SUFFIXES wlr-protocols/unstable
+        NO_DEFAULT_PATH REQUIRED)
+    find_file(RYU_XML_XDG_SHELL xdg-shell.xml
+        PATHS /usr/share /usr/local/share
+        PATH_SUFFIXES wayland-protocols/stable/xdg-shell
+        NO_DEFAULT_PATH REQUIRED)
+    find_file(RYU_XML_EXT_SESSION_LOCK ext-session-lock-v1.xml
+        PATHS /usr/share /usr/local/share
+        PATH_SUFFIXES wayland-protocols/staging/ext-session-lock
+        NO_DEFAULT_PATH REQUIRED)
+
+    file(READ "${RYU_XML_WLR_LAYER_SHELL}" RYU_LAYER_SHELL_XML)
+    string(REPLACE "name=\"namespace\"" "name=\"namespace_\"" RYU_LAYER_SHELL_XML "${RYU_LAYER_SHELL_XML}")
+    file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/ryu-protocols")
+    file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/ryu-protocols/wlr-layer-shell-unstable-v1.xml" "${RYU_LAYER_SHELL_XML}")
+    set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${RYU_XML_WLR_LAYER_SHELL}")
+    set(RYU_XML_WLR_LAYER_SHELL_PATCHED "${CMAKE_CURRENT_BINARY_DIR}/ryu-protocols/wlr-layer-shell-unstable-v1.xml")
 endif()
 
 if("Cleave" IN_LIST RYU_MODULES OR "Audio" IN_LIST RYU_MODULES)
@@ -45,6 +96,7 @@ if("Cleave" IN_LIST RYU_MODULES OR "Audio" IN_LIST RYU_MODULES)
 endif()
 
 qt_policy(SET QTP0001 NEW)
+qt_policy(SET QTP0004 NEW)
 
 qt_add_qml_module(RyuCore
     STATIC
@@ -191,6 +243,7 @@ ryu_module(Power
     LIBS
         Qt6::DBus
 )
+
 ryu_module(Notifications
     SOURCES
         Notifications/notifications.cpp
@@ -199,6 +252,7 @@ ryu_module(Notifications
         Qt6::DBus
         Qt6::Quick
 )
+
 ryu_module(Network
     SOURCES
         Network/iwd.cpp
@@ -206,6 +260,7 @@ ryu_module(Network
     LIBS
         Qt6::DBus
 )
+
 ryu_module(Io
     SOURCES
         Io/process.cpp
@@ -214,6 +269,8 @@ ryu_module(Io
         Io/exec.hpp
         Io/fileview.cpp
         Io/fileview.hpp
+        Io/env.cpp
+        Io/env.hpp
 )
 
 ryu_module(Desktop
@@ -238,6 +295,54 @@ ryu_module(Ui
         QtQuick.Effects
 )
 
+ryu_module(Wayland
+    SOURCES
+        Wayland/screencopy.cpp
+        Wayland/screencopy.hpp
+        Wayland/context.cpp
+        Wayland/context.hpp
+        Wayland/wlbuffer.cpp
+        Wayland/wlbuffer.hpp
+        Wayland/layershell.cpp
+        Wayland/layershell.hpp
+        Wayland/sessionlock.cpp
+        Wayland/sessionlock.hpp
+    LIBS
+        Qt6::Quick
+        Qt6::WaylandClient
+        Qt6::WaylandClientPrivate
+        Qt6::GuiPrivate
+        ${WAYLAND_CLIENT_LIBRARIES}
+        ${GBM_LIBRARIES}
+        ${EGL_LIBRARIES}
+        ${LIBDRM_LIBRARIES}
+    DEPS
+        QtQuick
+)
+
+if(TARGET Wayland)
+    qt_generate_wayland_protocol_client_sources(Wayland
+        PRIVATE_CODE
+        NO_INCLUDE_CORE_ONLY
+        FILES
+            ${RYU_XML_WLR_SCREENCOPY}
+            ${RYU_XML_LINUX_DMABUF}
+            ${RYU_XML_EXT_TOPLEVEL_LIST}
+            ${RYU_XML_EXT_CAPTURE_SOURCE}
+            ${RYU_XML_EXT_COPY_CAPTURE}
+            ${RYU_XML_WLR_LAYER_SHELL_PATCHED}
+            ${RYU_XML_XDG_SHELL}
+            ${RYU_XML_EXT_SESSION_LOCK}
+    )
+
+    target_include_directories(Wayland PRIVATE
+        ${WAYLAND_CLIENT_INCLUDE_DIRS}
+        ${GBM_INCLUDE_DIRS}
+        ${EGL_INCLUDE_DIRS}
+        ${LIBDRM_INCLUDE_DIRS}
+    )
+endif()
+
 ryu_module(Pam
     SOURCES
         Pam/pam.cpp
@@ -249,10 +354,11 @@ ryu_module(Pam
 if(TARGET Pam)
     target_include_directories(Pam PRIVATE ${PAM_INCLUDE_DIR})
 endif()
-ryu_module(Hyprland
+
+ryu_module(Sway
     SOURCES
-        Hyprland/hyprland.cpp
-        Hyprland/hyprland.hpp
+        Sway/sway.cpp
+        Sway/sway.hpp
     LIBS
         Qt6::Network
 )
