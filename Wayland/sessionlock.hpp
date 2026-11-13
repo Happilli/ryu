@@ -32,7 +32,6 @@ public:
 
   QString screenName() const { return m_screenName; }
   void setScreenName(const QString &name);
-
   bool hasImage() const { return !m_image.isNull(); }
 
 signals:
@@ -57,6 +56,7 @@ class WlSessionLockSurface : public QQuickWindow, public QQmlParserStatus {
   Q_PROPERTY(QQmlListProperty<QObject> contents READ contents)
   Q_PROPERTY(QObject *screen READ screenSource WRITE setScreenSource NOTIFY
                  screenSourceChanged)
+  Q_PROPERTY(QString screenName READ screenName NOTIFY screenSourceChanged)
   Q_PROPERTY(bool ready READ ready NOTIFY readyChanged)
   Q_PROPERTY(bool painted READ painted NOTIFY paintedChanged)
 
@@ -71,18 +71,16 @@ public:
 
   QObject *screenSource() const { return m_screen.data(); }
   void setScreenSource(QObject *screen);
+  QString screenName() const;
 
   bool ready() const { return m_ready; }
   void setReady();
-
   bool painted() const { return m_painted; }
   bool revealed() const { return m_revealed; }
   void markRevealed();
 
   QScreen *resolveScreen() const;
   void present();
-
-  Q_INVOKABLE void log(const QString &message) const;
 
   static void setDefaultColor(const QColor &color);
 
@@ -99,7 +97,6 @@ private:
 
   QPointer<QObject> m_screen;
   QList<QObject *> m_contents;
-  int m_frames = 0;
   bool m_ready = false;
   bool m_revealed = false;
   bool m_painted = false;
@@ -124,7 +121,6 @@ public:
 
   bool locked() const { return m_locked; }
   void setLocked(bool locked);
-
   bool secure() const { return m_secure; }
 
   QColor color() const { return m_color; }
@@ -152,7 +148,7 @@ private:
 
   bool prepare();
   void handleLoaded(quint64 generation, const QString &name,
-                    const QImage &image, qint64 ms);
+                    const QImage &image);
   void beginLock();
   bool engage();
   void fail();

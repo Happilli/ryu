@@ -1,8 +1,6 @@
 #include "./sessionlock.hpp"
 #include "qwayland-ext-session-lock-v1.h"
 #include "wayland-ext-session-lock-v1-client-protocol.h"
-
-#include <QElapsedTimer>
 #include <QGuiApplication>
 #include <QHash>
 #include <QMetaObject>
@@ -23,36 +21,6 @@
 #include <utility>
 
 namespace ryu::wl {
-
-static QElapsedTimer &lockClock() {
-  static QElapsedTimer clock;
-  return clock;
-}
-
-static void startClock() { lockClock().restart(); }
-
-static qint64 stamp() {
-  return lockClock().isValid() ? lockClock().elapsed() : -1;
-}
-
-static bool debugOn() {
-  static const bool on =
-      qEnvironmentVariable("RYU_LOCK_DEBUG", QStringLiteral("1")) !=
-      QLatin1String("0");
-  return on;
-}
-
-#define LOCKLOG(fmt, ...)                                                      \
-  do {                                                                         \
-    if (ryu::wl::debugOn()) {                                                  \
-      qInfo("lock +%lldms " fmt,                                               \
-            (long long)ryu::wl::stamp() __VA_OPT__(, ) __VA_ARGS__);           \
-    }                                                                          \
-  } while (0)
-
-static QString nameOf(const QObject *object) {
-  return object ? object->property("name").toString() : QString();
-}
 
 static QHash<QString, QImage> &backdrops() {
   static QHash<QString, QImage> images;
@@ -105,14 +73,12 @@ public:
 
 protected:
   void ext_session_lock_v1_locked() override {
-    LOCKLOG("compositor event: locked");
     if (m_owner) {
       m_owner->handleLocked();
     }
   }
 
   void ext_session_lock_v1_finished() override {
-    LOCKLOG("compositor event: finished");
     if (m_owner) {
       QMetaObject::invokeMethod(m_owner.data(), &WlSessionLock::handleFinished,
                                 Qt::QueuedConnection);
@@ -144,10 +110,6 @@ protected:
                                              uint32_t height) override {
     ack_configure(serial);
     m_pending = QSize(int(width), int(height));
-    LOCKLOG(
-        "configure %s serial=%u %ux%u first=%d",
-        qPrintable(nameOf(m_owner.data() ? m_owner->screenSource() : nullptr)),
-        serial, width, height, int(!m_configured));
     window()->resizeFromApplyConfigure(m_pending);
     if (m_configured) {
       return;
@@ -214,7 +176,6 @@ LockSurfaceRole::LockSurfaceRole(LockIntegration *shell,
     return;
   }
   init(lock->get_lock_surface(window->wlSurface(), output));
-  LOCKLOG("role created %s", qPrintable(nameOf(m_owner->screenSource())));
 }
 
 LockSurfaceRole::~LockSurfaceRole() {
@@ -230,26 +191,21 @@ void LockSurfaceRole::paintPlaceholder() {
   if (!m_owner || m_pending.isEmpty()) {
     return;
   }
-  QElapsedTimer timer;
-  timer.start();
-
-  const QString name = nameOf(m_owner->screenSource());
+  const QObject *source = m_owner->screenSource();
+  const QString name = source ? source->property("name").toString() : QString();
   const int scale = qMax(1, qRound(m_owner->devicePixelRatio()));
   const QSize px(m_pending.width() * scale, m_pending.height() * scale);
-
   QImage src = backdropFor(name);
   const bool hit = !src.isNull() && src.size() == px;
   if (!src.isNull() && !hit) {
     src =
         src.scaled(px, Qt::KeepAspectRatioByExpanding, Qt::FastTransformation);
   }
-
   m_shm = new QtWaylandClient::QWaylandShmBuffer(window()->display(), px,
                                                  QImage::Format_RGB32, scale);
   QImage *dst = m_shm->image();
   if (!hit)
     dst->fill(m_owner->color());
-
   if (!src.isNull()) {
     const int ox = (src.width() - px.width()) / 2;
     const int oy = (src.height() - px.height()) / 2;
@@ -258,7 +214,6 @@ void LockSurfaceRole::paintPlaceholder() {
                   size_t(px.width()) * 4);
     }
   }
-
   ::wl_surface *surface = window()->wlSurface();
   if (scale > 1) {
     wl_surface_set_buffer_scale(surface, scale);
@@ -267,12 +222,6 @@ void LockSurfaceRole::paintPlaceholder() {
   wl_surface_damage(surface, 0, 0, m_pending.width(), m_pending.height());
   wl_surface_commit(surface);
   wl_display_flush(window()->display()->wl_display());
-
-  LOCKLOG("placeholder committed %s px=%dx%d scale=%d image=%s exact=%d "
-          "took=%lldms",
-          qPrintable(name), px.width(), px.height(), scale,
-          src.isNull() ? "none" : "yes", int(hit), (long long)timer.elapsed());
-
   QObject::connect(
       m_owner.data(), &WlSessionLockSurface::paintedChanged, this,
       [this]() { dropPlaceholder(); }, Qt::SingleShotConnection);
@@ -284,8 +233,6 @@ void LockSurfaceRole::dropPlaceholder() {
   }
   delete m_shm;
   m_shm = nullptr;
-  LOCKLOG("placeholder freed %s",
-          qPrintable(nameOf(m_owner ? m_owner->screenSource() : nullptr)));
 }
 
 void LockSurfaceRole::release() {
@@ -296,8 +243,6 @@ void LockSurfaceRole::release() {
   if (m_owner) {
     m_owner->markRevealed();
   }
-  LOCKLOG("release %s",
-          qPrintable(nameOf(m_owner ? m_owner->screenSource() : nullptr)));
   window()->updateExposure();
 }
 
@@ -314,8 +259,6 @@ void LockBackdrop::setScreenName(const QString &name) {
   m_screenName = name;
   m_image = ryu::wl::backdropFor(name);
   m_textureDirty = true;
-  LOCKLOG("backdrop bound %s image=%dx%d", qPrintable(name), m_image.width(),
-          m_image.height());
   emit screenNameChanged();
   emit hasImageChanged();
   update();
@@ -332,21 +275,17 @@ QSGNode *LockBackdrop::updatePaintNode(QSGNode *old, UpdatePaintNodeData *) {
     m_textureDirty = true;
     return nullptr;
   }
-
   auto *node = static_cast<QSGImageNode *>(old);
   if (!node) {
     node = window()->createImageNode();
     node->setOwnsTexture(true);
     m_textureDirty = true;
   }
-
   if (m_textureDirty) {
     node->setTexture(window()->createTextureFromImage(
         m_image, QQuickWindow::TextureIsOpaque));
     m_textureDirty = false;
-    LOCKLOG("backdrop texture uploaded %s", qPrintable(m_screenName));
   }
-
   const QSizeF img = m_image.size();
   const qreal s = qMax(width() / img.width(), height() / img.height());
   const QSizeF visible(width() / s, height() / s);
@@ -360,20 +299,12 @@ QSGNode *LockBackdrop::updatePaintNode(QSGNode *old, UpdatePaintNodeData *) {
 
 WlSessionLockSurface::WlSessionLockSurface(QWindow *parent)
     : QQuickWindow(parent) {
-  qInfo() << rendererInterface()->graphicsApi();
   setColor(Qt::black);
   connect(this, &QQuickWindow::frameSwapped, this, [this]() {
-    if (m_frames < 4) {
-      ++m_frames;
-      LOCKLOG("frame #%d %s %dx%d dpr=%.2f revealed=%d", m_frames,
-              qPrintable(ryu::wl::nameOf(m_screen.data())), width(), height(),
-              devicePixelRatio(), int(m_revealed));
-    }
     if (!m_revealed || m_painted || width() <= 0) {
       return;
     }
     m_painted = true;
-    LOCKLOG("painted %s", qPrintable(ryu::wl::nameOf(m_screen.data())));
     emit paintedChanged();
   });
 }
@@ -384,11 +315,6 @@ void WlSessionLockSurface::classBegin() { setColor(ryu::wl::defaultColor()); }
 
 void WlSessionLockSurface::setDefaultColor(const QColor &color) {
   ryu::wl::defaultColor() = color;
-}
-
-void WlSessionLockSurface::log(const QString &message) const {
-  LOCKLOG("qml %s: %s", qPrintable(ryu::wl::nameOf(m_screen.data())),
-          qPrintable(message));
 }
 
 QQmlListProperty<QObject> WlSessionLockSurface::contents() {
@@ -429,6 +355,10 @@ void WlSessionLockSurface::setScreenSource(QObject *screen) {
   }
   m_screen = screen;
   emit screenSourceChanged();
+}
+QString WlSessionLockSurface::screenName() const {
+  const QObject *source = m_screen.data();
+  return source ? source->property("name").toString() : QString();
 }
 
 void WlSessionLockSurface::setReady() {
@@ -483,7 +413,6 @@ void WlSessionLockSurface::present() {
   }
   platform->setShellIntegration(integration);
   m_presented = true;
-  LOCKLOG("present %s", qPrintable(target->name()));
   setVisible(true);
 }
 
@@ -540,8 +469,6 @@ void WlSessionLock::setLocked(bool locked) {
     if (m_state != Idle) {
       return;
     }
-    ryu::wl::startClock();
-    LOCKLOG("lock requested");
     ++m_generation;
     m_state = Preparing;
     m_locked = true;
@@ -554,7 +481,6 @@ void WlSessionLock::setLocked(bool locked) {
   if (m_state == Idle) {
     return;
   }
-  LOCKLOG("unlock requested secure=%d", int(m_secure));
   ++m_generation;
   teardown(true);
   m_locked = false;
@@ -567,7 +493,6 @@ bool WlSessionLock::prepare() {
     QString path;
     QSize target;
   };
-
   QList<Job> jobs;
   const auto screens = QGuiApplication::screens();
   for (QScreen *screen : screens) {
@@ -583,31 +508,24 @@ bool WlSessionLock::prepare() {
     jobs.append({screen->name(), path,
                  QSize(logical.width() * scale, logical.height() * scale)});
   }
-
   ryu::wl::backdrops().clear();
   m_loading = int(jobs.size());
   if (jobs.isEmpty()) {
-    LOCKLOG("no backgrounds to decode");
     return false;
   }
-
-  LOCKLOG("decoding %d backgrounds on worker threads", m_loading);
   const quint64 generation = m_generation;
   QPointer<WlSessionLock> guard(this);
   for (const Job &job : std::as_const(jobs)) {
     QThreadPool::globalInstance()->start([guard, job, generation]() {
-      QElapsedTimer timer;
-      timer.start();
       const QImage image = ryu::wl::decodeBackdrop(job.path, job.target);
-      const qint64 ms = timer.elapsed();
       if (!guard) {
         return;
       }
       QMetaObject::invokeMethod(
           guard.data(),
-          [guard, job, generation, image, ms]() {
+          [guard, job, generation, image]() {
             if (guard) {
-              guard->handleLoaded(generation, job.name, image, ms);
+              guard->handleLoaded(generation, job.name, image);
             }
           },
           Qt::QueuedConnection);
@@ -617,16 +535,15 @@ bool WlSessionLock::prepare() {
 }
 
 void WlSessionLock::handleLoaded(quint64 generation, const QString &name,
-                                 const QImage &image, qint64 ms) {
+                                 const QImage &image) {
   if (generation != m_generation || m_state != Preparing) {
     return;
   }
   if (image.isNull()) {
-    LOCKLOG("decode FAILED %s", qPrintable(name));
+    qWarning("ryu wayland: lock backdrop decode failed for %s",
+             qPrintable(name));
   } else {
     ryu::wl::backdrops().insert(name, image);
-    LOCKLOG("decoded %s %dx%d in %lldms", qPrintable(name), image.width(),
-            image.height(), (long long)ms);
   }
   if (--m_loading <= 0) {
     beginLock();
@@ -643,7 +560,6 @@ void WlSessionLock::beginLock() {
 }
 
 void WlSessionLock::fail() {
-  LOCKLOG("lock failed");
   teardown(false);
   m_locked = false;
   emit lockedChanged();
@@ -699,10 +615,7 @@ bool WlSessionLock::engage() {
     qWarning("ryu wayland: session lock has no surface component");
     return false;
   }
-
   m_state = Locking;
-  LOCKLOG("engaging, creating surfaces");
-
   const auto screens = QGuiApplication::screens();
   for (QScreen *screen : screens) {
     if (!ryu::wl::validScreen(screen)) {
@@ -712,22 +625,17 @@ bool WlSessionLock::engage() {
       m_windows.append(window);
     }
   }
-
   if (m_windows.isEmpty()) {
     qWarning("ryu wayland: no usable outputs for session lock");
     return false;
   }
-
   m_obj = new ryu::wl::LockObject(this);
   m_obj->init(integration->lock());
   integration->setActiveLock(m_obj);
-  LOCKLOG("lock object created, %lld surfaces", (long long)m_windows.size());
-
   connect(qGuiApp, &QGuiApplication::screenAdded, this,
           [this](QScreen *screen) { addScreen(screen); });
   connect(qGuiApp, &QGuiApplication::screenRemoved, this,
           [this](QScreen *screen) { dropSurface(screen); });
-
   for (const QPointer<WlSessionLockSurface> &window :
        std::as_const(m_windows)) {
     if (window) {
@@ -743,10 +651,8 @@ void WlSessionLock::teardown(bool unlock) {
   if (m_obj) {
     if (m_obj->object()) {
       if (unlock && m_secure) {
-        LOCKLOG("unlock_and_destroy");
         m_obj->unlock_and_destroy();
       } else {
-        LOCKLOG("destroy lock object");
         m_obj->destroy();
       }
     }
@@ -762,7 +668,6 @@ void WlSessionLock::teardown(bool unlock) {
     m_secure = false;
     emit secureChanged();
   }
-  LOCKLOG("teardown complete, images and windows released");
 }
 
 void WlSessionLock::addScreen(QScreen *screen) {
@@ -770,7 +675,6 @@ void WlSessionLock::addScreen(QScreen *screen) {
       windowFor(screen)) {
     return;
   }
-  LOCKLOG("screen added during lock %s", qPrintable(screen->name()));
   auto *window = buildSurface(screen);
   if (!window) {
     return;
@@ -780,7 +684,6 @@ void WlSessionLock::addScreen(QScreen *screen) {
 }
 
 void WlSessionLock::dropSurface(QScreen *screen) {
-  LOCKLOG("screen removed during lock %s", qPrintable(screen->name()));
   m_windows.removeIf([screen](const QPointer<WlSessionLockSurface> &window) {
     if (!window) {
       return true;
