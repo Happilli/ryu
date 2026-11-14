@@ -8,10 +8,14 @@
 #include <QSocketNotifier>
 #include <QStringList>
 #include <QUrl>
+#include <QWindow>
 #include <csignal>
 #include <cstdio>
 #include <fcntl.h>
+#include <string>
+#include <sys/file.h>
 #include <unistd.h>
+#include <vector>
 
 namespace {
 
@@ -19,8 +23,8 @@ constexpr QLatin1String kPrefix("px");
 
 int g_signalPipe[2] = {-1, -1};
 
-void handleSignal(int) {
-  const char byte = 1;
+void handleSignal(int sig) {
+  const char byte = static_cast<char>(sig);
   const ssize_t written = write(g_signalPipe[1], &byte, 1);
   (void)written;
 }
@@ -36,6 +40,7 @@ bool installSignals() {
   sigaction(SIGTERM, &action, nullptr);
   sigaction(SIGINT, &action, nullptr);
   sigaction(SIGHUP, &action, nullptr);
+  sigaction(SIGUSR1, &action, nullptr);
   return true;
 }
 
@@ -105,13 +110,11 @@ bool writeQmllsIni(const QString &shellDir, const QString &imports) {
   paths << imports << QCoreApplication::applicationDirPath()
         << QLibraryInfo::path(QLibraryInfo::QmlImportsPath);
   paths.removeDuplicates();
-
   QByteArray content;
   content += "[General]\n";
   content += "no-cmake-calls=true\n";
   content += "buildDir=\"" + imports.toUtf8() + "\"\n";
   content += "importPaths=\"" + paths.join(QLatin1Char(':')).toUtf8() + "\"\n";
-
   const QString path = shellDir + QStringLiteral("/.qmlls.ini");
   QFile existing(path);
   if (existing.open(QIODevice::ReadOnly)) {
@@ -121,7 +124,6 @@ bool writeQmllsIni(const QString &shellDir, const QString &imports) {
       return true;
     }
   }
-
   QFile out(path);
   if (!out.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
     return false;
@@ -129,9 +131,63 @@ bool writeQmllsIni(const QString &shellDir, const QString &imports) {
   return out.write(content) == content.size();
 }
 
+bool acquireLock(const QString &path) {
+  const int fd = open(QFile::encodeName(path).constData(),
+                      O_RDWR | O_CREAT | O_CLOEXEC, 0600);
+  if (fd < 0) {
+    std::fprintf(stderr, "phoenix: cannot open %s\n", qPrintable(path));
+    return false;
+  }
+  if (flock(fd, LOCK_EX | LOCK_NB) != 0) {
+    char buffer[32] = {};
+    const ssize_t got = read(fd, buffer, sizeof(buffer) - 1);
+    std::fprintf(stderr,
+                 "phoenix: nope. pid %s is already all over this shell, get in "
+                 "line you thirsty bastard\n",
+                 got > 0 ? buffer : "?");
+    close(fd);
+    return false;
+  }
+  const std::string pid = std::to_string(getpid());
+  if (ftruncate(fd, 0) == 0) {
+    const ssize_t written = write(fd, pid.data(), pid.size());
+    (void)written;
+  }
+  return true;
+}
+
+bool sessionLocked() {
+  const QWindowList windows = QGuiApplication::allWindows();
+  for (QWindow *window : windows) {
+    if (window->inherits("WlSessionLockSurface")) {
+      return true;
+    }
+  }
+  return false;
+}
+
+void reexec(const QString &self, const std::vector<std::string> &original) {
+  const std::string path = self.toStdString();
+  std::vector<std::string> args = original;
+  if (!args.empty()) {
+    args[0] = path;
+  }
+  std::vector<char *> argv;
+  argv.reserve(args.size() + 1);
+  for (std::string &arg : args) {
+    argv.push_back(arg.data());
+  }
+  argv.push_back(nullptr);
+  std::fprintf(stderr, "phoenix: reloading\n");
+  execv(path.c_str(), argv.data());
+  std::fprintf(stderr, "phoenix: reload failed\n");
+}
+
 } // namespace
 
 int main(int argc, char **argv) {
+  const std::vector<std::string> original(argv, argv + argc);
+
   if (qEnvironmentVariableIsEmpty("QSG_RENDER_LOOP")) {
     qputenv("QSG_RENDER_LOOP", "basic");
   }
@@ -158,8 +214,13 @@ int main(int argc, char **argv) {
 
   const QString runtime =
       qEnvironmentVariable("XDG_RUNTIME_DIR", QStringLiteral("/tmp"));
+  if (!acquireLock(runtime + QStringLiteral("/phoenix.lock"))) {
+    return 1;
+  }
+
   const QString imports = runtime + QStringLiteral("/phoenix-imports");
   QDir().mkpath(imports);
+
   const QString mirror = imports + QLatin1Char('/') + QString(kPrefix);
   QFile::remove(mirror);
   QDir(mirror).removeRecursively();
@@ -167,7 +228,6 @@ int main(int argc, char **argv) {
     std::fprintf(stderr, "phoenix: cannot mirror %s\n", qPrintable(mirror));
     return 1;
   }
-
   if (!writeQmllsIni(shellDir.absolutePath(), imports)) {
     std::fprintf(stderr, "phoenix: could not write .qmlls.ini\n");
   }
@@ -177,21 +237,33 @@ int main(int argc, char **argv) {
     return 1;
   }
 
+  const QString self = QCoreApplication::applicationFilePath();
   QSocketNotifier signalNotifier(g_signalPipe[0], QSocketNotifier::Read);
   QObject::connect(&signalNotifier, &QSocketNotifier::activated, &app,
-                   [&signalNotifier]() {
-                     signalNotifier.setEnabled(false);
-                     QCoreApplication::quit();
+                   [&signalNotifier, &original, self]() {
+                     char sig = 0;
+                     if (read(g_signalPipe[0], &sig, 1) != 1) {
+                       return;
+                     }
+                     if (sig != SIGUSR1) {
+                       signalNotifier.setEnabled(false);
+                       QCoreApplication::quit();
+                       return;
+                     }
+                     if (sessionLocked()) {
+                       std::fprintf(stderr,
+                                    "phoenix: reload refused while locked\n");
+                       return;
+                     }
+                     reexec(self, original);
                    });
 
   QQmlApplicationEngine engine;
   engine.addImportPath(imports);
   engine.addImportPath(QCoreApplication::applicationDirPath());
-
   QObject::connect(
       &engine, &QQmlApplicationEngine::objectCreationFailed, &app,
       []() { QCoreApplication::exit(1); }, Qt::QueuedConnection);
-
   engine.load(QUrl::fromLocalFile(shellFile));
   if (engine.rootObjects().isEmpty()) {
     return 1;

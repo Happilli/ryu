@@ -4,11 +4,10 @@
 #include <cstdlib>
 #include <cstring>
 #include <string>
-#include <vector>
-
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <unistd.h>
+#include <vector>
 
 namespace {
 
@@ -35,8 +34,49 @@ bool writeAll(int fd, const std::string &data) {
   return true;
 }
 
+int connectSocket() {
+  const std::string path = socketPath();
+  sockaddr_un addr{};
+  addr.sun_family = AF_UNIX;
+  if (path.size() >= sizeof(addr.sun_path)) {
+    std::fputs("ryuctl: socket path too long\n", stderr);
+    return -1;
+  }
+  std::memcpy(addr.sun_path, path.c_str(), path.size() + 1);
+  const int fd = ::socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
+  if (fd < 0) {
+    std::fprintf(stderr, "ryuctl: socket: %s\n", std::strerror(errno));
+    return -1;
+  }
+  if (::connect(fd, reinterpret_cast<sockaddr *>(&addr), sizeof(addr)) < 0) {
+    std::fprintf(stderr, "ryuctl: cannot connect to %s: %s\n", path.c_str(),
+                 std::strerror(errno));
+    close(fd);
+    return -1;
+  }
+  return fd;
+}
+
+int reload(int fd) {
+  ucred cred{};
+  socklen_t length = sizeof(cred);
+  const int status = getsockopt(fd, SOL_SOCKET, SO_PEERCRED, &cred, &length);
+  close(fd);
+  if (status < 0) {
+    std::fprintf(stderr, "ryuctl: peer credentials: %s\n",
+                 std::strerror(errno));
+    return 1;
+  }
+  if (kill(cred.pid, SIGUSR1) < 0) {
+    std::fprintf(stderr, "ryuctl: kill: %s\n", std::strerror(errno));
+    return 1;
+  }
+  return 0;
+}
+
 int usage() {
   std::fputs("usage: ryuctl show\n"
+             "       ryuctl reload\n"
              "       ryuctl call <target> <function> [args...]\n",
              stderr);
   return 2;
@@ -48,8 +88,11 @@ int main(int argc, char **argv) {
   std::signal(SIGPIPE, SIG_IGN);
 
   std::vector<std::string> fields;
+  bool reloadMode = false;
   if (argc == 2 && std::strcmp(argv[1], "show") == 0) {
     fields.emplace_back("@show");
+  } else if (argc == 2 && std::strcmp(argv[1], "reload") == 0) {
+    reloadMode = true;
   } else if (argc >= 4 && std::strcmp(argv[1], "call") == 0) {
     for (int i = 2; i < argc; ++i)
       fields.emplace_back(argv[i]);
@@ -57,26 +100,12 @@ int main(int argc, char **argv) {
     return usage();
   }
 
-  const std::string path = socketPath();
-  sockaddr_un addr{};
-  addr.sun_family = AF_UNIX;
-  if (path.size() >= sizeof(addr.sun_path)) {
-    std::fputs("ryuctl: socket path too long\n", stderr);
+  const int fd = connectSocket();
+  if (fd < 0)
     return 1;
-  }
-  std::memcpy(addr.sun_path, path.c_str(), path.size() + 1);
 
-  const int fd = ::socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
-  if (fd < 0) {
-    std::fprintf(stderr, "ryuctl: socket: %s\n", std::strerror(errno));
-    return 1;
-  }
-
-  if (::connect(fd, reinterpret_cast<sockaddr *>(&addr), sizeof(addr)) < 0) {
-    std::fprintf(stderr, "ryuctl: cannot connect to %s: %s\n", path.c_str(),
-                 std::strerror(errno));
-    return 1;
-  }
+  if (reloadMode)
+    return reload(fd);
 
   std::string message = std::to_string(fields.size());
   message.push_back('\0');
@@ -84,7 +113,6 @@ int main(int argc, char **argv) {
     message += field;
     message.push_back('\0');
   }
-
   if (!writeAll(fd, message)) {
     std::fputs("ryuctl: write failed\n", stderr);
     return 1;
