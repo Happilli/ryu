@@ -1,8 +1,7 @@
 #pragma once
-
 #include <QObject>
 #include <QQmlEngine>
-#include <QVariant>
+#include <QStringList>
 
 class Exec : public QObject {
   Q_OBJECT
@@ -12,5 +11,5 @@ class Exec : public QObject {
 public:
   explicit Exec(QObject *parent = nullptr);
 
-  Q_INVOKABLE bool detached(const QVariant &spec);
+  Q_INVOKABLE bool detached(const QStringList &command);
 };

@@ -83,8 +83,8 @@ FileView::FileView(QObject *parent) : QObject(parent) {}
 void FileView::componentComplete() {
   m_complete = true;
   syncWatcher();
-  if (m_preload && !m_path.isEmpty()) {
-    load(m_blockLoading || m_blockAllReads);
+  if (!m_path.isEmpty()) {
+    load(m_blockLoading);
   }
 }
 
@@ -101,19 +101,8 @@ void FileView::setPath(const QString &path) {
     return;
   }
   syncWatcher();
-  if (m_preload && !m_path.isEmpty()) {
-    load(m_blockLoading || m_blockAllReads);
-  }
-}
-
-void FileView::setPreload(bool on) {
-  if (m_preload == on) {
-    return;
-  }
-  m_preload = on;
-  emit preloadChanged();
-  if (on && m_complete && !m_hasData && !m_path.isEmpty()) {
-    load(m_blockLoading || m_blockAllReads);
+  if (!m_path.isEmpty()) {
+    load(m_blockLoading);
   }
 }
 
@@ -123,22 +112,6 @@ void FileView::setBlockLoading(bool on) {
   }
   m_blockLoading = on;
   emit blockLoadingChanged();
-}
-
-void FileView::setBlockAllReads(bool on) {
-  if (m_blockAllReads == on) {
-    return;
-  }
-  m_blockAllReads = on;
-  emit blockAllReadsChanged();
-}
-
-void FileView::setBlockWrites(bool on) {
-  if (m_blockWrites == on) {
-    return;
-  }
-  m_blockWrites = on;
-  emit blockWritesChanged();
 }
 
 void FileView::setAtomicWrites(bool on) {
@@ -158,22 +131,9 @@ void FileView::setWatchChanges(bool on) {
   syncWatcher();
 }
 
-void FileView::setPrintErrors(bool on) {
-  if (m_printErrors == on) {
-    return;
-  }
-  m_printErrors = on;
-  emit printErrorsChanged();
-}
-
 QString FileView::text() {
   ensureData();
   return QString::fromUtf8(m_data);
-}
-
-QByteArray FileView::data() {
-  ensureData();
-  return m_data;
 }
 
 void FileView::ensureData() {
@@ -191,7 +151,7 @@ void FileView::reload() {
   if (m_path.isEmpty()) {
     return;
   }
-  load(m_blockAllReads);
+  load(false);
 }
 
 void FileView::load(bool blocking) {
@@ -225,10 +185,8 @@ void FileView::finishLoad(const QByteArray &data, FileViewError::Enum error,
     return;
   }
   if (error != FileViewError::Success) {
-    if (m_printErrors) {
-      qWarning() << "FileView: failed to read" << m_path << "error"
-                 << static_cast<int>(error);
-    }
+    qWarning() << "FileView: failed to read" << m_path << "error"
+               << static_cast<int>(error);
     emit loadFailed(error);
     return;
   }
@@ -239,18 +197,12 @@ void FileView::finishLoad(const QByteArray &data, FileViewError::Enum error,
 
 void FileView::setText(const QString &text) { write(text.toUtf8()); }
 
-void FileView::setData(const QByteArray &data) { write(data); }
-
 void FileView::write(const QByteArray &data) {
   if (m_path.isEmpty()) {
     return;
   }
   m_data = data;
   m_hasData = true;
-  if (m_blockWrites) {
-    finishWrite(writeFile(m_path, data, m_atomicWrites));
-    return;
-  }
   if (m_writing) {
     m_queued = data;
     m_hasQueued = true;
@@ -294,14 +246,9 @@ void FileView::finishWrite(FileViewError::Enum error) {
     arm();
   }
   if (error != FileViewError::Success) {
-    if (m_printErrors) {
-      qWarning() << "FileView: failed to write" << m_path << "error"
-                 << static_cast<int>(error);
-    }
-    emit saveFailed(error);
-    return;
+    qWarning() << "FileView: failed to write" << m_path << "error"
+               << static_cast<int>(error);
   }
-  emit saved();
 }
 
 FileView::Signature FileView::signature() const {

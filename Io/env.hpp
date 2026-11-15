@@ -1,5 +1,4 @@
 #pragma once
-
 #include <QObject>
 #include <QQmlEngine>
 #include <QString>
@@ -13,5 +12,4 @@ public:
   explicit Env(QObject *parent = nullptr);
 
   Q_INVOKABLE QString get(const QString &name) const;
-  Q_INVOKABLE bool has(const QString &name) const;
 };
