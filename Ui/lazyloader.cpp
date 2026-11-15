@@ -1,16 +1,10 @@
 #include "./lazyloader.hpp"
-
-#include <QMetaObject>
 #include <QQmlEngine>
 #include <QWindow>
 
 LazyLoader::LazyLoader(QObject *parent) : QObject(parent) {}
 
-LazyLoader::~LazyLoader() {
-  if (m_item) {
-    delete m_item.data();
-  }
-}
+LazyLoader::~LazyLoader() { delete m_item.data(); }
 
 void LazyLoader::setLoading(bool on) {
   if (m_loading == on) {

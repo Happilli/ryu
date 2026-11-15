@@ -15,11 +15,7 @@ void Variants::setDelegate(QQmlComponent *delegate) {
   }
   m_delegate = delegate;
   emit delegateChanged();
-  for (const Entry &entry : std::as_const(m_entries)) {
-    if (entry.object) {
-      entry.object->deleteLater();
-    }
-  }
+  release(m_entries);
   m_entries.clear();
   sync();
 }
@@ -30,21 +26,19 @@ void Variants::setModel(const QVariant &model) {
   sync();
 }
 
-QVariantList Variants::instances() const {
-  QVariantList out;
-  for (const Entry &entry : m_entries) {
-    if (entry.object) {
-      out.append(QVariant::fromValue(entry.object.data()));
-    }
-  }
-  return out;
-}
-
 QVariantList Variants::toList(const QVariant &model) {
   if (model.metaType() == QMetaType::fromType<QJSValue>()) {
     return model.value<QJSValue>().toVariant().toList();
   }
   return model.toList();
+}
+
+void Variants::release(const QList<Entry> &entries) {
+  for (const Entry &entry : entries) {
+    if (entry.object) {
+      entry.object->deleteLater();
+    }
+  }
 }
 
 QObject *Variants::createInstance(const QVariant &value) {
@@ -65,18 +59,12 @@ QObject *Variants::createInstance(const QVariant &value) {
 }
 
 void Variants::sync() {
-  if (!m_complete || !m_delegate) {
+  if (!m_complete || !m_delegate || m_delegate->isLoading()) {
     return;
   }
-  if (m_delegate->isLoading()) {
-    return;
-  }
-
-  const QVariantList wanted = toList(m_model);
   QList<Entry> old = m_entries;
   QList<Entry> next;
-
-  for (const QVariant &value : wanted) {
+  for (const QVariant &value : toList(m_model)) {
     int found = -1;
     for (int i = 0; i < old.size(); ++i) {
       if (old.at(i).value == value && old.at(i).object) {
@@ -86,20 +74,10 @@ void Variants::sync() {
     }
     if (found >= 0) {
       next.append(old.takeAt(found));
-      continue;
-    }
-    QObject *object = createInstance(value);
-    if (object) {
+    } else if (QObject *object = createInstance(value)) {
       next.append(Entry{value, object});
     }
   }
-
-  for (const Entry &entry : std::as_const(old)) {
-    if (entry.object) {
-      entry.object->deleteLater();
-    }
-  }
-
+  release(old);
   m_entries = next;
-  emit instancesChanged();
 }

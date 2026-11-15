@@ -1,5 +1,4 @@
 #pragma once
-
 #include <QList>
 #include <QObject>
 #include <QPointer>
@@ -7,7 +6,6 @@
 #include <QQmlEngine>
 #include <QQmlParserStatus>
 #include <QVariant>
-#include <QVariantList>
 
 class Variants : public QObject, public QQmlParserStatus {
   Q_OBJECT
@@ -17,24 +15,21 @@ class Variants : public QObject, public QQmlParserStatus {
   Q_PROPERTY(QQmlComponent *delegate READ delegate WRITE setDelegate NOTIFY
                  delegateChanged)
   Q_PROPERTY(QVariant model READ model WRITE setModel NOTIFY modelChanged)
-  Q_PROPERTY(QVariantList instances READ instances NOTIFY instancesChanged)
 
 public:
   explicit Variants(QObject *parent = nullptr);
-
   void classBegin() override {}
   void componentComplete() override;
 
   QQmlComponent *delegate() const { return m_delegate.data(); }
   void setDelegate(QQmlComponent *delegate);
+
   QVariant model() const { return m_model; }
   void setModel(const QVariant &model);
-  QVariantList instances() const;
 
 signals:
   void delegateChanged();
   void modelChanged();
-  void instancesChanged();
 
 private:
   struct Entry {
@@ -43,6 +38,7 @@ private:
   };
 
   static QVariantList toList(const QVariant &model);
+  static void release(const QList<Entry> &entries);
   QObject *createInstance(const QVariant &value);
   void sync();
 

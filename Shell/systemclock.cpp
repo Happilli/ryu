@@ -3,7 +3,7 @@
 SystemClock::SystemClock(QObject *parent) : QObject(parent) {
   m_timer.setSingleShot(true);
   m_timer.setTimerType(Qt::PreciseTimer);
-  connect(&m_timer, &QTimer::timeout, this, [this]() { tick(); });
+  connect(&m_timer, &QTimer::timeout, this, &SystemClock::tick);
   m_date = truncated(QDateTime::currentDateTime());
   tick();
 }
@@ -31,20 +31,10 @@ void SystemClock::setPrecision(Precision precision) {
 }
 
 QDateTime SystemClock::truncated(const QDateTime &now) const {
+  const QTime time = now.time();
   QDateTime out = now;
-  QTime time = now.time();
-  switch (m_precision) {
-  case Hours:
-    time = QTime(time.hour(), 0, 0, 0);
-    break;
-  case Minutes:
-    time = QTime(time.hour(), time.minute(), 0, 0);
-    break;
-  case Seconds:
-    time = QTime(time.hour(), time.minute(), time.second(), 0);
-    break;
-  }
-  out.setTime(time);
+  out.setTime(QTime(time.hour(), m_precision >= Minutes ? time.minute() : 0,
+                    m_precision == Seconds ? time.second() : 0, 0));
   return out;
 }
 
@@ -58,12 +48,8 @@ void SystemClock::tick() {
     m_date = current;
     emit dateChanged();
   }
-  qint64 step = 1000;
-  if (m_precision == Minutes) {
-    step = 60 * 1000;
-  } else if (m_precision == Hours) {
-    step = 60 * 60 * 1000;
-  }
-  const qint64 wait = now.msecsTo(current.addMSecs(step));
-  m_timer.start(int(qMax<qint64>(wait, 1)));
+  const qint64 step = m_precision == Hours     ? 60 * 60 * 1000
+                      : m_precision == Minutes ? 60 * 1000
+                                               : 1000;
+  m_timer.start(int(qMax<qint64>(now.msecsTo(current.addMSecs(step)), 1)));
 }

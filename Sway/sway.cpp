@@ -80,40 +80,27 @@ void collect(const QJsonObject &node, const QString &output,
   const QString type = node.value("type").toString();
   const QJsonArray tiled = node.value("nodes").toArray();
   const QJsonArray floating = node.value("floating_nodes").toArray();
+  QString nextOutput = output;
+  QVariantMap nextWorkspace = workspace;
 
   if (type == "root") {
-    for (const QJsonValue &child : tiled)
-      collect(child.toObject(), QString(), QVariantMap(), monitorId, out);
-    return;
-  }
-
-  if (type == "output") {
-    const QString name = node.value("name").toString();
-    for (const QJsonValue &child : tiled)
-      collect(child.toObject(), name, QVariantMap(), monitorId, out);
-    return;
-  }
-
-  if (type == "workspace") {
-    QVariantMap ws;
-    ws["id"] = workspaceKey(node);
-    ws["name"] = node.value("name").toString();
-    for (const QJsonValue &child : tiled)
-      collect(child.toObject(), output, ws, monitorId, out);
-    for (const QJsonValue &child : floating)
-      collect(child.toObject(), output, ws, monitorId, out);
-    return;
-  }
-
-  if (tiled.isEmpty() && floating.isEmpty() &&
-      (type == "con" || type == "floating_con")) {
+    nextOutput.clear();
+    nextWorkspace.clear();
+  } else if (type == "output") {
+    nextOutput = node.value("name").toString();
+    nextWorkspace.clear();
+  } else if (type == "workspace") {
+    nextWorkspace = QVariantMap();
+    nextWorkspace["id"] = workspaceKey(node);
+    nextWorkspace["name"] = node.value("name").toString();
+  } else if (tiled.isEmpty() && floating.isEmpty() &&
+             (type == "con" || type == "floating_con")) {
     const qint64 id = node.value("id").toInteger();
     const QJsonObject rect = node.value("rect").toObject();
     QString cls = node.value("app_id").toString();
     if (cls.isEmpty())
       cls =
           node.value("window_properties").toObject().value("class").toString();
-
     QVariantMap m;
     m["address"] = QString::number(id);
     m["foreignId"] = node.value("foreign_toplevel_identifier").toString();
@@ -133,9 +120,9 @@ void collect(const QJsonObject &node, const QString &output,
   }
 
   for (const QJsonValue &child : tiled)
-    collect(child.toObject(), output, workspace, monitorId, out);
+    collect(child.toObject(), nextOutput, nextWorkspace, monitorId, out);
   for (const QJsonValue &child : floating)
-    collect(child.toObject(), output, workspace, monitorId, out);
+    collect(child.toObject(), nextOutput, nextWorkspace, monitorId, out);
 }
 
 } // namespace
@@ -194,11 +181,10 @@ QString SwayWorkspace::name() const {
 }
 
 void SwayWorkspace::setIpc(const QVariantMap &ipc) {
-  if (m_ipc != ipc) {
-    m_ipc = ipc;
-    emit ipcObjectChanged();
-  }
-  resolveMonitor();
+  if (m_ipc == ipc)
+    return;
+  m_ipc = ipc;
+  emit ipcObjectChanged();
 }
 
 void SwayWorkspace::resolveMonitor() {
@@ -385,11 +371,9 @@ void Sway::request(quint32 type, const QByteArray &payload,
       done(QByteArray());
     return;
   }
-
   auto buffer = std::make_shared<QByteArray>();
   auto finished = std::make_shared<bool>(false);
   auto *socket = new QLocalSocket(this);
-
   auto finish = [socket, finished, done](const QByteArray &result) {
     if (*finished)
       return;
@@ -400,7 +384,6 @@ void Sway::request(quint32 type, const QByteArray &payload,
     if (done)
       done(result);
   };
-
   connect(socket, &QLocalSocket::connected, socket,
           [socket, type, payload] { socket->write(frame(type, payload)); });
   connect(socket, &QLocalSocket::readyRead, socket, [socket, buffer, finish] {
@@ -414,7 +397,6 @@ void Sway::request(quint32 type, const QByteArray &payload,
           [finish] { finish(QByteArray()); });
   connect(socket, &QLocalSocket::errorOccurred, socket,
           [finish](QLocalSocket::LocalSocketError) { finish(QByteArray()); });
-
   socket->connectToServer(path);
 }
 
@@ -549,17 +531,12 @@ void Sway::applyLayout(const QByteArray &outputs,
 
   m_workspaces->setValues(wsList);
   m_monitors->setValues(monList);
-
   if (focused != m_focused.data()) {
     m_focused = focused;
     emit focusedMonitorChanged();
   }
-
   for (SwayWorkspace *workspace : std::as_const(m_workspaceMap))
     workspace->resolveMonitor();
-  for (SwayMonitor *monitor : std::as_const(m_monitorMap))
-    monitor->resolve();
-
   for (SwayWorkspace *workspace : std::as_const(goneWs))
     workspace->deleteLater();
   for (SwayMonitor *monitor : std::as_const(goneMon))
@@ -595,7 +572,6 @@ void Sway::applyToplevels(const QByteArray &data) {
   m_activeAddress = active;
   applyActive();
   m_toplevels->setValues(list);
-
   for (SwayToplevel *toplevel : std::as_const(gone))
     toplevel->deleteLater();
 }

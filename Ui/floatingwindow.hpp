@@ -1,5 +1,4 @@
 #pragma once
-
 #include <QList>
 #include <QQmlListProperty>
 #include <QQmlParserStatus>
@@ -42,11 +41,6 @@ signals:
   void maximumSizeChanged();
 
 private:
-  static void appendContent(QQmlListProperty<QObject> *list, QObject *object);
-  static qsizetype countContent(QQmlListProperty<QObject> *list);
-  static QObject *atContent(QQmlListProperty<QObject> *list, qsizetype index);
-  static void clearContent(QQmlListProperty<QObject> *list);
-
   void applySize();
 
   QList<QObject *> m_contents;

@@ -1,5 +1,4 @@
 #pragma once
-
 #include <QList>
 #include <QObject>
 #include <QQmlEngine>
@@ -16,11 +15,6 @@ public:
   QQmlListProperty<QObject> contents();
 
 private:
-  static void appendContent(QQmlListProperty<QObject> *list, QObject *object);
-  static qsizetype contentCount(QQmlListProperty<QObject> *list);
-  static QObject *contentAt(QQmlListProperty<QObject> *list, qsizetype index);
-  static void clearContents(QQmlListProperty<QObject> *list);
-
   QList<QObject *> m_contents;
 };
 

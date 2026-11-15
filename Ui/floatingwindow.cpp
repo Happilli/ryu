@@ -15,33 +15,26 @@ FloatingWindow::FloatingWindow(QWindow *parent) : QQuickWindow(parent) {
 
 QQmlListProperty<QObject> FloatingWindow::contents() {
   return QQmlListProperty<QObject>(
-      this, nullptr, &FloatingWindow::appendContent,
-      &FloatingWindow::countContent, &FloatingWindow::atContent,
-      &FloatingWindow::clearContent);
-}
-
-void FloatingWindow::appendContent(QQmlListProperty<QObject> *list,
-                                   QObject *object) {
-  auto *self = static_cast<FloatingWindow *>(list->object);
-  self->m_contents.append(object);
-  if (auto *item = qobject_cast<QQuickItem *>(object)) {
-    item->setParentItem(self->contentItem());
-  } else {
-    object->setParent(self);
-  }
-}
-
-qsizetype FloatingWindow::countContent(QQmlListProperty<QObject> *list) {
-  return static_cast<FloatingWindow *>(list->object)->m_contents.size();
-}
-
-QObject *FloatingWindow::atContent(QQmlListProperty<QObject> *list,
-                                   qsizetype index) {
-  return static_cast<FloatingWindow *>(list->object)->m_contents.at(index);
-}
-
-void FloatingWindow::clearContent(QQmlListProperty<QObject> *list) {
-  static_cast<FloatingWindow *>(list->object)->m_contents.clear();
+      this, nullptr,
+      [](QQmlListProperty<QObject> *list, QObject *object) {
+        auto *self = static_cast<FloatingWindow *>(list->object);
+        self->m_contents.append(object);
+        if (auto *item = qobject_cast<QQuickItem *>(object)) {
+          item->setParentItem(self->contentItem());
+        } else {
+          object->setParent(self);
+        }
+      },
+      [](QQmlListProperty<QObject> *list) -> qsizetype {
+        return static_cast<FloatingWindow *>(list->object)->m_contents.size();
+      },
+      [](QQmlListProperty<QObject> *list, qsizetype index) -> QObject * {
+        return static_cast<FloatingWindow *>(list->object)
+            ->m_contents.at(index);
+      },
+      [](QQmlListProperty<QObject> *list) {
+        static_cast<FloatingWindow *>(list->object)->m_contents.clear();
+      });
 }
 
 void FloatingWindow::setImplicitWidth(qreal value) {
