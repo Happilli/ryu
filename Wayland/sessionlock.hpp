@@ -1,5 +1,4 @@
 #pragma once
-
 #include <QColor>
 #include <QImage>
 #include <QList>
@@ -32,6 +31,7 @@ public:
 
   QString screenName() const { return m_screenName; }
   void setScreenName(const QString &name);
+
   bool hasImage() const { return !m_image.isNull(); }
 
 signals:
@@ -75,6 +75,7 @@ public:
 
   bool ready() const { return m_ready; }
   void setReady();
+
   bool painted() const { return m_painted; }
   bool revealed() const { return m_revealed; }
   void markRevealed();
@@ -90,11 +91,6 @@ signals:
   void paintedChanged();
 
 private:
-  static void appendContent(QQmlListProperty<QObject> *list, QObject *object);
-  static qsizetype contentCount(QQmlListProperty<QObject> *list);
-  static QObject *contentAt(QQmlListProperty<QObject> *list, qsizetype index);
-  static void clearContents(QQmlListProperty<QObject> *list);
-
   QPointer<QObject> m_screen;
   QList<QObject *> m_contents;
   bool m_ready = false;
@@ -121,6 +117,7 @@ public:
 
   bool locked() const { return m_locked; }
   void setLocked(bool locked);
+
   bool secure() const { return m_secure; }
 
   QColor color() const { return m_color; }

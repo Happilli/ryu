@@ -1,7 +1,6 @@
 #include "./layershell.hpp"
 #include "qwayland-wlr-layer-shell-unstable-v1.h"
 #include "wayland-wlr-layer-shell-unstable-v1-client-protocol.h"
-#include <QGuiApplication>
 #include <QMetaObject>
 #include <QScreen>
 #include <QSurfaceFormat>
@@ -181,33 +180,29 @@ void Region::setItem(QQuickItem *item) {
 }
 
 QQmlListProperty<Region> Region::regions() {
-  return QQmlListProperty<Region>(this, nullptr, &Region::appendRegion,
-                                  &Region::regionCount, &Region::regionAt,
-                                  &Region::clearRegions);
-}
-
-void Region::appendRegion(QQmlListProperty<Region> *list, Region *region) {
-  auto *self = static_cast<Region *>(list->object);
-  self->m_regions.append(region);
-  connect(region, &Region::changed, self, &Region::changed);
-  emit self->changed();
-}
-
-qsizetype Region::regionCount(QQmlListProperty<Region> *list) {
-  return static_cast<Region *>(list->object)->m_regions.size();
-}
-
-Region *Region::regionAt(QQmlListProperty<Region> *list, qsizetype index) {
-  return static_cast<Region *>(list->object)->m_regions.at(index);
-}
-
-void Region::clearRegions(QQmlListProperty<Region> *list) {
-  auto *self = static_cast<Region *>(list->object);
-  for (Region *region : std::as_const(self->m_regions)) {
-    disconnect(region, nullptr, self, nullptr);
-  }
-  self->m_regions.clear();
-  emit self->changed();
+  return QQmlListProperty<Region>(
+      this, &m_regions,
+      [](QQmlListProperty<Region> *list, Region *region) {
+        auto *self = static_cast<Region *>(list->object);
+        static_cast<QList<Region *> *>(list->data)->append(region);
+        QObject::connect(region, &Region::changed, self, &Region::changed);
+        emit self->changed();
+      },
+      [](QQmlListProperty<Region> *list) -> qsizetype {
+        return static_cast<QList<Region *> *>(list->data)->size();
+      },
+      [](QQmlListProperty<Region> *list, qsizetype index) -> Region * {
+        return static_cast<QList<Region *> *>(list->data)->at(index);
+      },
+      [](QQmlListProperty<Region> *list) {
+        auto *self = static_cast<Region *>(list->object);
+        auto *regions = static_cast<QList<Region *> *>(list->data);
+        for (Region *region : std::as_const(*regions)) {
+          QObject::disconnect(region, nullptr, self, nullptr);
+        }
+        regions->clear();
+        emit self->changed();
+      });
 }
 
 QRegion Region::build() const {
@@ -226,15 +221,14 @@ QRegion Region::build() const {
   }
   return out;
 }
+
 WlrLayershell::WlrLayershell(QWindow *parent) : QQuickWindow(parent) {
   QSurfaceFormat surface = format();
   surface.setAlphaBufferSize(8);
   setFormat(surface);
   setColor(Qt::transparent);
-
   m_anchors = new WlrAnchors(this);
   m_margins = new WlrMargins(this);
-
   connect(m_anchors, &WlrAnchors::changed, this, [this]() {
     if (m_surface) {
       m_surface->setAnchors(m_anchors->mask());
@@ -246,16 +240,13 @@ WlrLayershell::WlrLayershell(QWindow *parent) : QQuickWindow(parent) {
                             m_margins->bottom(), m_margins->left());
     }
   });
-  connect(this, &QWindow::widthChanged, this, [this]() {
+  auto syncSize = [this]() {
     if (m_surface) {
       m_surface->syncSize();
     }
-  });
-  connect(this, &QWindow::heightChanged, this, [this]() {
-    if (m_surface) {
-      m_surface->syncSize();
-    }
-  });
+  };
+  connect(this, &QWindow::widthChanged, this, syncSize);
+  connect(this, &QWindow::heightChanged, this, syncSize);
   connect(this, &QQuickWindow::afterAnimating, this,
           &WlrLayershell::schedulePush);
 }
@@ -268,34 +259,7 @@ void WlrLayershell::componentComplete() {
 }
 
 QQmlListProperty<QObject> WlrLayershell::contents() {
-  return QQmlListProperty<QObject>(this, nullptr, &WlrLayershell::appendContent,
-                                   &WlrLayershell::contentCount,
-                                   &WlrLayershell::contentAt,
-                                   &WlrLayershell::clearContents);
-}
-
-void WlrLayershell::appendContent(QQmlListProperty<QObject> *list,
-                                  QObject *object) {
-  auto *self = static_cast<WlrLayershell *>(list->object);
-  self->m_contents.append(object);
-  if (auto *item = qobject_cast<QQuickItem *>(object)) {
-    item->setParentItem(self->contentItem());
-  } else {
-    object->setParent(self);
-  }
-}
-
-qsizetype WlrLayershell::contentCount(QQmlListProperty<QObject> *list) {
-  return static_cast<WlrLayershell *>(list->object)->m_contents.size();
-}
-
-QObject *WlrLayershell::contentAt(QQmlListProperty<QObject> *list,
-                                  qsizetype index) {
-  return static_cast<WlrLayershell *>(list->object)->m_contents.at(index);
-}
-
-void WlrLayershell::clearContents(QQmlListProperty<QObject> *list) {
-  static_cast<WlrLayershell *>(list->object)->m_contents.clear();
+  return windowContents(this, &m_contents);
 }
 
 void WlrLayershell::setNs(const QString &ns) {
@@ -403,24 +367,6 @@ void WlrLayershell::pushInput() {
   m_surface->setInput(region);
 }
 
-QScreen *WlrLayershell::resolveScreen() const {
-  QObject *source = m_screen.data();
-  if (!source) {
-    return nullptr;
-  }
-  if (auto *screen = qobject_cast<QScreen *>(source)) {
-    return screen;
-  }
-  const QString name = source->property("name").toString();
-  const auto screens = QGuiApplication::screens();
-  for (QScreen *screen : screens) {
-    if (screen->name() == name) {
-      return screen;
-    }
-  }
-  return nullptr;
-}
-
 void WlrLayershell::present() {
   ryu::wl::LayerIntegration *integration =
       ryu::wl::LayerIntegration::instance();
@@ -428,9 +374,8 @@ void WlrLayershell::present() {
     qWarning("ryu wayland: zwlr_layer_shell_v1 is not available");
     return;
   }
-
   if (m_screen) {
-    QScreen *target = resolveScreen();
+    QScreen *target = screenFromSource(m_screen.data());
     if (!target) {
       qWarning("ryu wayland: layer shell output not found");
       return;
@@ -439,17 +384,16 @@ void WlrLayershell::present() {
       QWindow::setScreen(target);
     }
   }
-
   create();
   auto *platform = dynamic_cast<QtWaylandClient::QWaylandWindow *>(handle());
   if (!platform) {
     qWarning("ryu wayland: not running on the wayland platform plugin");
     return;
   }
-
   platform->setShellIntegration(integration);
   setVisible(true);
 }
+
 void WlrLayershell::recreate() {
   if (!m_complete || !isVisible()) {
     return;

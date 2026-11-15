@@ -1,4 +1,5 @@
 #include "./sessionlock.hpp"
+#include "./shellutil.hpp"
 #include "qwayland-ext-session-lock-v1.h"
 #include "wayland-ext-session-lock-v1-client-protocol.h"
 #include <QGuiApplication>
@@ -195,12 +196,14 @@ void LockSurfaceRole::paintPlaceholder() {
   const QString name = source ? source->property("name").toString() : QString();
   const int scale = qMax(1, qRound(m_owner->devicePixelRatio()));
   const QSize px(m_pending.width() * scale, m_pending.height() * scale);
+
   QImage src = backdropFor(name);
   const bool hit = !src.isNull() && src.size() == px;
   if (!src.isNull() && !hit) {
     src =
         src.scaled(px, Qt::KeepAspectRatioByExpanding, Qt::FastTransformation);
   }
+
   m_shm = new QtWaylandClient::QWaylandShmBuffer(window()->display(), px,
                                                  QImage::Format_RGB32, scale);
   QImage *dst = m_shm->image();
@@ -214,6 +217,7 @@ void LockSurfaceRole::paintPlaceholder() {
                   size_t(px.width()) * 4);
     }
   }
+
   ::wl_surface *surface = window()->wlSurface();
   if (scale > 1) {
     wl_surface_set_buffer_scale(surface, scale);
@@ -222,6 +226,7 @@ void LockSurfaceRole::paintPlaceholder() {
   wl_surface_damage(surface, 0, 0, m_pending.width(), m_pending.height());
   wl_surface_commit(surface);
   wl_display_flush(window()->display()->wl_display());
+
   QObject::connect(
       m_owner.data(), &WlSessionLockSurface::paintedChanged, this,
       [this]() { dropPlaceholder(); }, Qt::SingleShotConnection);
@@ -318,35 +323,7 @@ void WlSessionLockSurface::setDefaultColor(const QColor &color) {
 }
 
 QQmlListProperty<QObject> WlSessionLockSurface::contents() {
-  return QQmlListProperty<QObject>(
-      this, nullptr, &WlSessionLockSurface::appendContent,
-      &WlSessionLockSurface::contentCount, &WlSessionLockSurface::contentAt,
-      &WlSessionLockSurface::clearContents);
-}
-
-void WlSessionLockSurface::appendContent(QQmlListProperty<QObject> *list,
-                                         QObject *object) {
-  auto *self = static_cast<WlSessionLockSurface *>(list->object);
-  self->m_contents.append(object);
-  if (auto *item = qobject_cast<QQuickItem *>(object)) {
-    item->setParentItem(self->contentItem());
-  } else {
-    object->setParent(self);
-  }
-}
-
-qsizetype WlSessionLockSurface::contentCount(QQmlListProperty<QObject> *list) {
-  return static_cast<WlSessionLockSurface *>(list->object)->m_contents.size();
-}
-
-QObject *WlSessionLockSurface::contentAt(QQmlListProperty<QObject> *list,
-                                         qsizetype index) {
-  return static_cast<WlSessionLockSurface *>(list->object)
-      ->m_contents.at(index);
-}
-
-void WlSessionLockSurface::clearContents(QQmlListProperty<QObject> *list) {
-  static_cast<WlSessionLockSurface *>(list->object)->m_contents.clear();
+  return windowContents(this, &m_contents);
 }
 
 void WlSessionLockSurface::setScreenSource(QObject *screen) {
@@ -356,6 +333,7 @@ void WlSessionLockSurface::setScreenSource(QObject *screen) {
   m_screen = screen;
   emit screenSourceChanged();
 }
+
 QString WlSessionLockSurface::screenName() const {
   const QObject *source = m_screen.data();
   return source ? source->property("name").toString() : QString();
@@ -372,21 +350,7 @@ void WlSessionLockSurface::setReady() {
 void WlSessionLockSurface::markRevealed() { m_revealed = true; }
 
 QScreen *WlSessionLockSurface::resolveScreen() const {
-  QObject *source = m_screen.data();
-  if (!source) {
-    return nullptr;
-  }
-  if (auto *screen = qobject_cast<QScreen *>(source)) {
-    return screen;
-  }
-  const QString name = source->property("name").toString();
-  const auto screens = QGuiApplication::screens();
-  for (QScreen *screen : screens) {
-    if (screen->name() == name) {
-      return screen;
-    }
-  }
-  return nullptr;
+  return screenFromSource(m_screen.data());
 }
 
 void WlSessionLockSurface::present() {

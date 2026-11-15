@@ -1,5 +1,5 @@
 #pragma once
-
+#include "./shellutil.hpp"
 #include <QList>
 #include <QObject>
 #include <QPointer>
@@ -48,28 +48,20 @@ public:
   bool right() const { return m_right; }
 
   void setTop(bool v) {
-    if (m_top != v) {
-      m_top = v;
+    if (assignChanged(m_top, v))
       emit changed();
-    }
   }
   void setBottom(bool v) {
-    if (m_bottom != v) {
-      m_bottom = v;
+    if (assignChanged(m_bottom, v))
       emit changed();
-    }
   }
   void setLeft(bool v) {
-    if (m_left != v) {
-      m_left = v;
+    if (assignChanged(m_left, v))
       emit changed();
-    }
   }
   void setRight(bool v) {
-    if (m_right != v) {
-      m_right = v;
+    if (assignChanged(m_right, v))
       emit changed();
-    }
   }
 
   uint32_t mask() const {
@@ -104,28 +96,20 @@ public:
   int right() const { return m_right; }
 
   void setTop(int v) {
-    if (m_top != v) {
-      m_top = v;
+    if (assignChanged(m_top, v))
       emit changed();
-    }
   }
   void setBottom(int v) {
-    if (m_bottom != v) {
-      m_bottom = v;
+    if (assignChanged(m_bottom, v))
       emit changed();
-    }
   }
   void setLeft(int v) {
-    if (m_left != v) {
-      m_left = v;
+    if (assignChanged(m_left, v))
       emit changed();
-    }
   }
   void setRight(int v) {
-    if (m_right != v) {
-      m_right = v;
+    if (assignChanged(m_right, v))
       emit changed();
-    }
   }
 
 signals:
@@ -159,11 +143,6 @@ signals:
   void changed();
 
 private:
-  static void appendRegion(QQmlListProperty<Region> *list, Region *region);
-  static qsizetype regionCount(QQmlListProperty<Region> *list);
-  static Region *regionAt(QQmlListProperty<Region> *list, qsizetype index);
-  static void clearRegions(QQmlListProperty<Region> *list);
-
   QPointer<QQuickItem> m_item;
   QList<Region *> m_regions;
 };
@@ -231,12 +210,6 @@ signals:
   void maskChanged();
 
 private:
-  static void appendContent(QQmlListProperty<QObject> *list, QObject *object);
-  static qsizetype contentCount(QQmlListProperty<QObject> *list);
-  static QObject *contentAt(QQmlListProperty<QObject> *list, qsizetype index);
-  static void clearContents(QQmlListProperty<QObject> *list);
-
-  QScreen *resolveScreen() const;
   void present();
   void recreate();
   void schedulePush();
